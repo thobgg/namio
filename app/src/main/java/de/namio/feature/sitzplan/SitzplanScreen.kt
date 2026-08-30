@@ -42,6 +42,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Cameraswitch
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PersonRemove
@@ -104,6 +105,14 @@ import de.namio.ui.components.BestaetigenDialog
 import de.namio.ui.components.SchuelerFoto
 import kotlin.math.roundToInt
 
+/** Was ein Tipp auf die freie Fläche anlegt. */
+enum class TischArt(val plaetze: Int, val breite: Float, val label: Int) {
+    EINZEL(1, 1f, R.string.tischart_einzel),
+    ZWEIER_EIN_KIND(1, 2f, R.string.tischart_zweier_ein_kind),
+    DOPPEL(2, 2f, R.string.tischart_doppel),
+    DREIER(3, 3f, R.string.tischart_dreier),
+}
+
 private const val ZOOM_MIN = 0.5f
 private const val ZOOM_MAX = 3f
 
@@ -126,6 +135,7 @@ fun SitzplanScreen(
             alsStandard = viewModel::alsStandard,
             ablegen = viewModel::ablegen,
             tischHinzufuegen = viewModel::tischHinzufuegen,
+            duplizieren = viewModel::duplizieren,
             verschieben = viewModel::verschieben,
             drehen = viewModel::drehen,
             plaetzeAendern = viewModel::plaetzeAendern,
@@ -151,7 +161,8 @@ data class SitzplanAktionen(
     val planLoeschen: () -> Unit,
     val alsStandard: () -> Unit,
     val ablegen: (Long, Float, Float) -> Unit,
-    val tischHinzufuegen: (Float, Float, Int) -> Unit,
+    val tischHinzufuegen: (Float, Float, Int, Float?) -> Unit,
+    val duplizieren: (Long) -> Unit,
     val verschieben: (Long, Float, Float) -> Unit,
     val drehen: (Long, Float) -> Unit,
     val plaetzeAendern: (Long, Int) -> Unit,
@@ -191,6 +202,7 @@ private fun SitzplanInhalt(
     var ausgewaehlterSchueler by remember { mutableStateOf<Long?>(null) }
     var drag by remember { mutableStateOf<Drag?>(null) }
     var zoom by rememberSaveable { mutableStateOf(1f) }
+    var tischArt by rememberSaveable { mutableStateOf(TischArt.DOPPEL) }
     val zoomGeste = rememberTransformableState { faktor, _, _ -> zoom = (zoom * faktor).coerceIn(ZOOM_MIN, ZOOM_MAX) }
     var flaeche by remember { mutableStateOf<Rect?>(null) }
     val blinken = rememberInfiniteTransition(label = "blinken")
@@ -339,7 +351,7 @@ private fun SitzplanInhalt(
                                                 when {
                                                     s != null -> { aktionen.ablegen(s, raum.first, raum.second); ausgewaehlterSchueler = null }
                                                     ausgewaehlterTisch != null -> ausgewaehlterTisch = null
-                                                    else -> aktionen.tischHinzufuegen(raum.first, raum.second, 2)
+                                                    else -> aktionen.tischHinzufuegen(raum.first, raum.second, tischArt.plaetze, tischArt.breite)
                                                 }
                                             }
                                         },
@@ -391,11 +403,24 @@ private fun SitzplanInhalt(
                             }
                         }
                     }
+                    if (!state.gesperrt && gewaehlt == null) {
+                        Row(
+                            Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceContainerHigh).horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 2.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(stringResource(R.string.sitzplan_neuer_tisch), style = MaterialTheme.typography.labelMedium)
+                            TischArt.entries.forEach { art ->
+                                FilterChip(selected = art == tischArt, onClick = { tischArt = art }, label = { Text(stringResource(art.label)) })
+                            }
+                        }
+                    }
                     if (gewaehlt != null && !state.gesperrt) {
                         TischWerkzeuge(
                             tisch = gewaehlt,
                             sitzende = best.plaetzeVon(gewaehlt.id).count { it.schuelerId != null },
                             onDrehen = { aktionen.drehen(gewaehlt.id, it) },
+                            onDuplizieren = { aktionen.duplizieren(gewaehlt.id) },
                             onPlaetze = { aktionen.plaetzeAendern(gewaehlt.id, it) },
                             onBreite = { aktionen.breiteAendern(gewaehlt.id, it) },
                             onBeschriften = { beschriftenDialog = true },
@@ -509,6 +534,7 @@ private fun TischWerkzeuge(
     tisch: Tisch,
     sitzende: Int,
     onDrehen: (Float) -> Unit,
+    onDuplizieren: () -> Unit,
     onPlaetze: (Int) -> Unit,
     onBreite: (Float) -> Unit,
     onBeschriften: () -> Unit,
@@ -516,13 +542,16 @@ private fun TischWerkzeuge(
     onLoeschen: () -> Unit,
 ) {
     Row(
-        Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceContainerHigh).padding(horizontal = 8.dp, vertical = 2.dp),
+        Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceContainerHigh).horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp, vertical = 2.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        TextButton(onClick = { onDrehen(-45f) }, contentPadding = PaddingValues(4.dp)) { Text("−45°") }
         IconButton(onClick = { onDrehen(-15f) }) { Icon(Icons.Default.RotateLeft, contentDescription = stringResource(R.string.sitzplan_drehen_links)) }
         Text("${tisch.drehung.roundToInt()}°", style = MaterialTheme.typography.labelMedium)
         IconButton(onClick = { onDrehen(15f) }) { Icon(Icons.Default.RotateRight, contentDescription = stringResource(R.string.sitzplan_drehen_rechts)) }
+        TextButton(onClick = { onDrehen(45f) }, contentPadding = PaddingValues(4.dp)) { Text("+45°") }
+        IconButton(onClick = onDuplizieren) { Icon(Icons.Default.ContentCopy, contentDescription = stringResource(R.string.sitzplan_duplizieren)) }
         if (!tisch.istMoebel) {
             Spacer(Modifier.size(8.dp))
             IconButton(onClick = { onPlaetze(tisch.plaetze - 1) }, enabled = tisch.plaetze > 1) { Icon(Icons.Default.Remove, contentDescription = stringResource(R.string.sitzplan_platz_weniger)) }
@@ -606,6 +635,7 @@ private fun UnplatziertLeiste(
 private fun vorlageName(v: SitzplanVorlage): String = stringResource(
     when (v) {
         SitzplanVorlage.LEER -> R.string.vorlage_leer
+        SitzplanVorlage.RASTER_EINZEL -> R.string.vorlage_raster_einzel
         SitzplanVorlage.DOPPELTISCH_REIHEN -> R.string.vorlage_doppeltische
         SitzplanVorlage.U_FORM -> R.string.vorlage_u_form
         SitzplanVorlage.GRUPPENTISCHE -> R.string.vorlage_gruppen

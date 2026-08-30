@@ -85,7 +85,8 @@ class SitzplanRepository @Inject constructor(
     }
 
     suspend fun ablegen(planId: Long, schuelerId: Long, x: Float, y: Float) = schreibe(planId) { p, b -> SitzplanLogik.ablegen(b, planId, schuelerId, x, y, p.spalten, p.reihen, p.einrasten) }
-    suspend fun tischHinzufuegen(planId: Long, x: Float, y: Float, plaetze: Int, beschriftung: String?) = schreibe(planId) { p, b -> SitzplanLogik.tischHinzufuegen(b, planId, x, y, 0f, plaetze, beschriftung, p.spalten, p.reihen, p.einrasten) }
+    suspend fun tischHinzufuegen(planId: Long, x: Float, y: Float, plaetze: Int, beschriftung: String?, breite: Float? = null) = schreibe(planId) { p, b -> SitzplanLogik.tischHinzufuegen(b, planId, x, y, 0f, plaetze, beschriftung, p.spalten, p.reihen, p.einrasten, breite) }
+    suspend fun duplizieren(planId: Long, tischId: Long) = schreibe(planId) { p, b -> SitzplanLogik.duplizieren(b, tischId, p.spalten, p.reihen) }
     suspend fun verschieben(planId: Long, tischId: Long, x: Float, y: Float) = schreibe(planId) { p, b -> SitzplanLogik.verschieben(b, tischId, x, y, p.spalten, p.reihen, p.einrasten) }
     suspend fun drehen(planId: Long, tischId: Long, grad: Float) = schreibe(planId) { _, b -> SitzplanLogik.drehen(b, tischId, grad) }
     suspend fun breiteAendern(planId: Long, tischId: Long, breite: Float) = schreibe(planId) { _, b -> SitzplanLogik.breiteAendern(b, tischId, breite) }

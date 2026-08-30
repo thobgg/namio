@@ -57,6 +57,8 @@ enum class Blickrichtung {
 /** Startvorlagen für neue Pläne. */
 enum class SitzplanVorlage {
     LEER,
+    /** Je Kind ein Einzeltisch im Raster – zum freien Zusammenschieben (Tapucate-Art). */
+    RASTER_EINZEL,
     DOPPELTISCH_REIHEN,
     U_FORM,
     GRUPPENTISCHE,

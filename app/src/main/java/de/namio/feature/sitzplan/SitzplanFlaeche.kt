@@ -29,6 +29,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -85,12 +87,14 @@ fun SitzplanFlaeche(
         val breite: Dp = einheit * plan.spalten
         val hoehe: Dp = einheit * plan.reihen
         val dichte = LocalDensity.current
+        val raumBeschreibung = stringResource(R.string.sitzplan_raum_beschreibung, plan.spalten, plan.reihen)
         Column(Modifier.width(breite), horizontalAlignment = Alignment.CenterHorizontally) {
             if (tafelOben) Tafel(breite)
             Box(
                 Modifier
                     .width(breite)
                     .height(hoehe)
+                    .semantics { contentDescription = raumBeschreibung }
                     .background(MaterialTheme.colorScheme.surfaceContainerLow, RoundedCornerShape(8.dp))
                     .then(flaechenModifier),
             ) {

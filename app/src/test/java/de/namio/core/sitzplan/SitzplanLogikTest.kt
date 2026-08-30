@@ -158,3 +158,58 @@ class SitzplanLogikTest {
         assertTrue(SitzplanLogik.vorlage(SitzplanVorlage.LEER, 1, S, R, listOf(1)).tische.isEmpty())
     }
 }
+
+class TischTrefferTest {
+    private val S = 12
+    private val R = 9
+    private fun tisch(id: Long, x: Float, y: Float, d: Float = 0f, plaetze: Int = 1, breite: Float = 3f) = Tisch(id, 1, x, y, d, plaetze, null, breite)
+
+    @Test
+    fun `drop irgendwo auf breitem tisch landet im freien slot`() {
+        val t = tisch(1, 0.5f, 0.5f)
+        val b = Bestuhlung(listOf(t), listOf(Sitzplatz(10, 1, 1, 0, null)))
+        // 1,2 Einheiten rechts der Mitte: außerhalb des Slot-Radius, aber noch auf dem 3 breiten Tisch
+        val neu = SitzplanLogik.ablegen(b, 1, 7, 0.5f + 1.2f / S, 0.5f, S, R, einrasten = false)
+        assertEquals(1, neu.tische.size)
+        assertEquals(7L, neu.plaetze.single().schuelerId)
+    }
+
+    @Test
+    fun `drop neben dem tisch erzeugt neuen tisch`() {
+        val b = Bestuhlung(listOf(tisch(1, 0.5f, 0.5f)), listOf(Sitzplatz(10, 1, 1, 0, null)))
+        val neu = SitzplanLogik.ablegen(b, 1, 7, 0.5f + 2.5f / S, 0.5f, S, R, einrasten = false)
+        assertEquals(2, neu.tische.size)
+    }
+
+    @Test
+    fun `gedrehter tisch wird korrekt getroffen`() {
+        val t = tisch(1, 0.5f, 0.5f, d = 90f)
+        val b = Bestuhlung(listOf(t), listOf(Sitzplatz(10, 1, 1, 0, null)))
+        assertEquals(t, SitzplanLogik.tischBei(b, 0.5f, 0.5f + 1.2f / R, S, R))
+        assertNull(SitzplanLogik.tischBei(b, 0.5f + 1.2f / S, 0.5f, S, R))
+    }
+
+    @Test
+    fun `duplizieren kopiert form und setzt daneben`() {
+        val t = tisch(1, 0.3f, 0.5f, d = 0f, plaetze = 1, breite = 3f)
+        val b = Bestuhlung(listOf(t), listOf(Sitzplatz(10, 1, 1, 0, 7)))
+        val neu = SitzplanLogik.duplizieren(b, 1, S, R)
+        assertEquals(2, neu.tische.size)
+        val k = neu.tische.last()
+        assertEquals(3f, k.breite)
+        assertEquals(1, k.plaetze)
+        assertEquals(0.3f + 3f / S, k.x, 1e-4f)
+        assertNull(neu.plaetzeVon(k.id).single().schuelerId)
+    }
+}
+
+class RasterEinzelTest {
+    @Test
+    fun `je kind ein tisch alle belegt im raum`() {
+        val ids = (1L..24L).toList()
+        val b = SitzplanLogik.vorlage(SitzplanVorlage.RASTER_EINZEL, 1, 14, 20, ids)
+        assertEquals(24, b.tische.size)
+        assertTrue(b.tische.all { it.plaetze == 1 && it.x in 0f..1f && it.y in 0f..1f })
+        assertEquals(ids, b.plaetze.map { it.schuelerId })
+    }
+}

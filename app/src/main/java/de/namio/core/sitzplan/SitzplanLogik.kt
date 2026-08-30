@@ -16,6 +16,8 @@ object SitzplanLogik {
 
     /** Ab dieser Entfernung (in Einheiten) vom Slot-Mittelpunkt gilt ein Drop als „auf dem Platz“. */
     const val TREFFER_RADIUS = 0.55f
+    /** Tischtiefe in Platzbreiten, für Treffertests. */
+    const val TISCH_TIEFE = 1.12f
     const val MAX_PLAETZE = 4
     const val MAX_BREITE = 6f
 
@@ -40,6 +42,42 @@ object SitzplanLogik {
         return best?.takeIf { bestAbstand <= TREFFER_RADIUS }
     }
 
+    /** Tisch, dessen (gedrehte) Fläche den Punkt ([x], [y]) enthält – der oberste zuerst. */
+    fun tischBei(b: Bestuhlung, x: Float, y: Float, spalten: Int, reihen: Int): Tisch? =
+        b.tische.lastOrNull { t ->
+            val rad = Math.toRadians(-t.drehung.toDouble())
+            val dx = (x - t.x) * spalten
+            val dy = (y - t.y) * reihen
+            val lx = dx * cos(rad) - dy * sin(rad)
+            val ly = dx * sin(rad) + dy * cos(rad)
+            kotlin.math.abs(lx) <= t.breite / 2 && kotlin.math.abs(ly) <= TISCH_TIEFE / 2
+        }
+
+    /** Ziel-Slot für einen Drop: naher Slot, sonst freier (oder nächster) Slot des getroffenen Tisches. */
+    fun zielSlot(b: Bestuhlung, x: Float, y: Float, spalten: Int, reihen: Int): Sitzplatz? {
+        slotBei(b, x, y, spalten, reihen)?.let { return it }
+        val t = tischBei(b, x, y, spalten, reihen) ?: return null
+        val slots = b.plaetzeVon(t.id)
+        if (slots.isEmpty()) return null
+        fun abstand(p: Sitzplatz): Float { val (sx, sy) = slotPosition(t, p.slot, spalten, reihen); return hypot((sx - x) * spalten, (sy - y) * reihen) }
+        return slots.filter { it.schuelerId == null }.minByOrNull(::abstand) ?: slots.minByOrNull(::abstand)
+    }
+
+    /** Kopie eines Tisches (Breite, Plätze, Drehung, Beschriftung) direkt daneben, leer. */
+    fun duplizieren(b: Bestuhlung, tischId: Long, spalten: Int, reihen: Int): Bestuhlung {
+        val t = b.tisch(tischId) ?: return b
+        val rad = Math.toRadians(t.drehung.toDouble())
+        var nx = t.x + (t.breite * cos(rad) / spalten).toFloat()
+        var ny = t.y + (t.breite * sin(rad) / reihen).toFloat()
+        if (nx !in 0f..1f || ny !in 0f..1f) {
+            nx = t.x - (t.breite * cos(rad) / spalten).toFloat()
+            ny = t.y - (t.breite * sin(rad) / reihen).toFloat()
+        }
+        val neu = tischHinzufuegen(b, t.sitzplanId, nx.coerceIn(0f, 1f), ny.coerceIn(0f, 1f), t.drehung, t.plaetze, t.beschriftung, spalten, reihen, einrasten = false)
+        val id = neu.tische.last().id
+        return neu.copy(tische = neu.tische.map { if (it.id == id) it.copy(breite = t.breite) else it })
+    }
+
     /** Rastet auf das halbe Raster ein und hält den Punkt im Raum. */
     fun einrasten(x: Float, y: Float, spalten: Int, reihen: Int): Pair<Float, Float> {
         val sx = (x * spalten * 2).roundToInt() / (spalten * 2f)
@@ -53,11 +91,11 @@ object SitzplanLogik {
     private fun neueId(b: Bestuhlung): Long = (b.tische.minOfOrNull { it.id }?.coerceAtMost(0L) ?: 0L) - 1
 
     /** Neuer Tisch mit [plaetze] leeren Slots (0 = Möbel mit [beschriftung]). */
-    fun tischHinzufuegen(b: Bestuhlung, sitzplanId: Long, x: Float, y: Float, drehung: Float, plaetze: Int, beschriftung: String?, spalten: Int, reihen: Int, einrasten: Boolean): Bestuhlung {
+    fun tischHinzufuegen(b: Bestuhlung, sitzplanId: Long, x: Float, y: Float, drehung: Float, plaetze: Int, beschriftung: String?, spalten: Int, reihen: Int, einrasten: Boolean, breite: Float? = null): Bestuhlung {
         val (nx, ny) = position(x, y, spalten, reihen, einrasten)
         val id = neueId(b)
         val n = plaetze.coerceIn(0, MAX_PLAETZE)
-        val tisch = Tisch(id, sitzplanId, nx, ny, drehung, n, beschriftung?.takeIf { plaetze == 0 }, breite = n.coerceAtLeast(1).toFloat())
+        val tisch = Tisch(id, sitzplanId, nx, ny, drehung, n, beschriftung?.takeIf { plaetze == 0 }, breite = (breite ?: n.coerceAtLeast(1).toFloat()).coerceIn(0.5f, MAX_BREITE))
         val slots = (0 until tisch.plaetze).map { Sitzplatz(0, sitzplanId, id, it, null) }
         return Bestuhlung(b.tische + tisch, b.plaetze + slots)
     }
@@ -68,7 +106,7 @@ object SitzplanLogik {
      */
     fun ablegen(b: Bestuhlung, sitzplanId: Long, schuelerId: Long, x: Float, y: Float, spalten: Int, reihen: Int, einrasten: Boolean): Bestuhlung {
         val alt = b.plaetze.firstOrNull { it.schuelerId == schuelerId }
-        val ziel = slotBei(b, x, y, spalten, reihen)
+        val ziel = zielSlot(b, x, y, spalten, reihen)
         return when {
             ziel == null -> {
                 val ohne = if (alt != null) b.copy(plaetze = b.plaetze.map { if (it.id == alt.id) it.copy(schuelerId = null) else it }) else b
@@ -157,6 +195,7 @@ object SitzplanLogik {
     fun vorlage(art: SitzplanVorlage, sitzplanId: Long, spalten: Int, reihen: Int, schuelerIds: List<Long>): Bestuhlung {
         val tische: List<Triple<Pair<Float, Float>, Float, Int>> = when (art) {
             SitzplanVorlage.LEER -> emptyList()
+            SitzplanVorlage.RASTER_EINZEL -> rasterEinzel(spalten, reihen, schuelerIds.size)
             SitzplanVorlage.DOPPELTISCH_REIHEN -> doppeltischReihen(spalten, reihen)
             SitzplanVorlage.U_FORM -> uForm(spalten, reihen)
             SitzplanVorlage.GRUPPENTISCHE -> gruppentische(spalten, reihen)
@@ -166,6 +205,23 @@ object SitzplanLogik {
         var i = 0
         val plaetze = b.plaetze.map { p -> if (i < schuelerIds.size) p.copy(schuelerId = schuelerIds[i++]) else p }
         return b.copy(plaetze = plaetze)
+    }
+
+    /** Einzeltische im Raster: so viele wie Kinder (mindestens 1), 1,4 Einheiten Abstand, ab 1,5 Einheiten hinter der Tafel. */
+    private fun rasterEinzel(spalten: Int, reihen: Int, anzahl: Int): List<Triple<Pair<Float, Float>, Float, Int>> {
+        val proZeile = ((spalten - 1) / 1.4f).toInt().coerceAtLeast(1)
+        val out = mutableListOf<Triple<Pair<Float, Float>, Float, Int>>()
+        val n = anzahl.coerceAtLeast(1)
+        val breiteGesamt = (minOf(n, proZeile) - 1) * 1.4f
+        val links = (spalten - breiteGesamt) / 2f
+        for (i in 0 until n) {
+            val z = i / proZeile
+            val s = i % proZeile
+            val y = (1.5f + z * 1.4f + 0.5f) / reihen
+            if (y > 1f) break
+            out += Triple(((links + s * 1.4f) / spalten) to y, 0f, 1)
+        }
+        return out
     }
 
     private fun doppeltischReihen(spalten: Int, reihen: Int): List<Triple<Pair<Float, Float>, Float, Int>> {

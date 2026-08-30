@@ -159,7 +159,8 @@ class SitzplanViewModel @Inject constructor(
     fun planLoeschen() = mitPlanImmer { id -> viewModelScope.launch { sitzplanRepository.loeschen(id); gewaehltePlanId.value = null } }
     fun alsStandard() = mitPlanImmer { id -> viewModelScope.launch { sitzplanRepository.alsStandard(id) } }
     fun ablegen(schuelerId: Long, x: Float, y: Float) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.ablegen(id, schuelerId, x, y) } }
-    fun tischHinzufuegen(x: Float, y: Float, plaetze: Int) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.tischHinzufuegen(id, x, y, plaetze, null) } }
+    fun tischHinzufuegen(x: Float, y: Float, plaetze: Int, breite: Float? = null) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.tischHinzufuegen(id, x, y, plaetze, null, breite) } }
+    fun duplizieren(tischId: Long) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.duplizieren(id, tischId) } }
     fun verschieben(tischId: Long, x: Float, y: Float) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.verschieben(id, tischId, x, y) } }
     fun drehen(tischId: Long, grad: Float) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.drehen(id, tischId, grad) } }
     fun breiteAendern(tischId: Long, breite: Float) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.breiteAendern(id, tischId, breite) } }
