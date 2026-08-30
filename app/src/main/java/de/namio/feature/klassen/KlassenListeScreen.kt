@@ -66,6 +66,14 @@ fun KlassenListeScreen(
         onAnlegen = viewModel::anlegen,
         onLoeschen = viewModel::loeschen,
     )
+    if (state.hinweisZeigen && !state.laedt) {
+        AlertDialog(
+            onDismissRequest = {},
+            title = { Text(stringResource(R.string.hinweis_titel)) },
+            text = { Text(stringResource(R.string.hinweis_text)) },
+            confirmButton = { TextButton(onClick = viewModel::hinweisBestaetigen) { Text(stringResource(R.string.hinweis_verstanden)) } },
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

@@ -12,6 +12,18 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import android.net.Uri
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.remember
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import de.namio.core.transfer.ExportFormat
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -46,7 +58,58 @@ import de.namio.ui.components.INHALT_MAX_BREITE
 @Composable
 fun EinstellungenScreen(onZurueck: () -> Unit, viewModel: EinstellungenViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    EinstellungenInhalt(state, onZurueck, viewModel::appSperre, viewModel::blickrichtung, viewModel::neueKarten, viewModel::allesLoeschen)
+    val transfer by viewModel.transferStatus.collectAsStateWithLifecycle()
+    var passwortFuer by remember { mutableStateOf<TransferArt?>(null) }
+    var gewaehlteUri by remember { mutableStateOf<Uri?>(null) }
+    val dateiname = remember { "namio-" + java.time.LocalDate.now() + ExportFormat.DATEIENDUNG }
+    val exportZiel = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
+        if (uri != null) { gewaehlteUri = uri; passwortFuer = TransferArt.EXPORT }
+    }
+    val importQuelle = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) { gewaehlteUri = uri; passwortFuer = TransferArt.IMPORT }
+    }
+    EinstellungenInhalt(
+        state, onZurueck, viewModel::appSperre, viewModel::blickrichtung, viewModel::neueKarten, viewModel::allesLoeschen,
+        onExport = { exportZiel.launch(dateiname) },
+        onImport = { importQuelle.launch(arrayOf("*/*")) },
+        transfer = transfer,
+        onTransferQuittieren = viewModel::transferQuittieren,
+    )
+    passwortFuer?.let { art ->
+        PasswortDialog(
+            art = art,
+            onAbbrechen = { passwortFuer = null },
+            onOk = { pw ->
+                val uri = gewaehlteUri
+                passwortFuer = null
+                if (uri != null) { if (art == TransferArt.EXPORT) viewModel.exportieren(uri, pw) else viewModel.importieren(uri, pw) }
+            },
+        )
+    }
+}
+
+enum class TransferArt { EXPORT, IMPORT }
+
+@Composable
+private fun PasswortDialog(art: TransferArt, onAbbrechen: () -> Unit, onOk: (String) -> Unit) {
+    var pw by remember { mutableStateOf("") }
+    var pw2 by remember { mutableStateOf("") }
+    val export = art == TransferArt.EXPORT
+    val gueltig = pw.length >= 6 && (!export || pw == pw2)
+    AlertDialog(
+        onDismissRequest = onAbbrechen,
+        title = { Text(stringResource(if (export) R.string.export_titel else R.string.import_titel)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(stringResource(if (export) R.string.export_hinweis else R.string.import_hinweis), style = MaterialTheme.typography.bodyMedium)
+                OutlinedTextField(value = pw, onValueChange = { pw = it }, label = { Text(stringResource(R.string.transfer_passwort)) }, singleLine = true, visualTransformation = PasswordVisualTransformation())
+                if (export) OutlinedTextField(value = pw2, onValueChange = { pw2 = it }, label = { Text(stringResource(R.string.transfer_passwort_wiederholen)) }, singleLine = true, visualTransformation = PasswordVisualTransformation())
+                Text(stringResource(R.string.transfer_passwort_regel), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        },
+        confirmButton = { TextButton(enabled = gueltig, onClick = { onOk(pw) }) { Text(stringResource(if (export) R.string.export_starten else R.string.import_starten)) } },
+        dismissButton = { TextButton(onClick = onAbbrechen) { Text(stringResource(R.string.abbrechen)) } },
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,6 +121,10 @@ private fun EinstellungenInhalt(
     onBlickrichtung: (Blickrichtung) -> Unit,
     onNeueKarten: (Int) -> Unit,
     onAllesLoeschen: () -> Unit,
+    onExport: () -> Unit = {},
+    onImport: () -> Unit = {},
+    transfer: TransferStatus? = null,
+    onTransferQuittieren: () -> Unit = {},
 ) {
     var loeschenFrage by rememberSaveable { mutableStateOf(false) }
     Scaffold(
@@ -95,13 +162,25 @@ private fun EinstellungenInhalt(
                 } }
                 Card { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(stringResource(R.string.einstellungen_daten), style = MaterialTheme.typography.titleMedium)
-                    Text(stringResource(R.string.einstellungen_export_bald), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.einstellungen_transfer_hinweis), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        OutlinedButton(onClick = onExport, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.export_titel)) }
+                        OutlinedButton(onClick = onImport, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.import_titel)) }
+                    }
                     Button(onClick = { loeschenFrage = true }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error), modifier = Modifier.fillMaxWidth()) {
                         Text(stringResource(R.string.einstellungen_alles_loeschen))
                     }
                 } }
             }
         }
+    }
+    when (transfer) {
+        TransferStatus.Laeuft -> AlertDialog(onDismissRequest = {}, confirmButton = {}, text = { Row(verticalAlignment = Alignment.CenterVertically) { CircularProgressIndicator(); Text(stringResource(R.string.transfer_laeuft), modifier = Modifier.padding(start = 16.dp)) } })
+        is TransferStatus.Exportiert -> AlertDialog(onDismissRequest = onTransferQuittieren, confirmButton = { TextButton(onClick = onTransferQuittieren) { Text("OK") } }, text = { Text(pluralStringResource(R.plurals.export_fertig, transfer.schueler, transfer.schueler)) })
+        is TransferStatus.Importiert -> AlertDialog(onDismissRequest = onTransferQuittieren, confirmButton = { TextButton(onClick = onTransferQuittieren) { Text("OK") } }, text = { Text(pluralStringResource(R.plurals.import_fertig, transfer.schueler, transfer.schueler)) })
+        TransferStatus.FalschesPasswort -> AlertDialog(onDismissRequest = onTransferQuittieren, confirmButton = { TextButton(onClick = onTransferQuittieren) { Text("OK") } }, text = { Text(stringResource(R.string.import_falsches_passwort)) })
+        TransferStatus.Fehler -> AlertDialog(onDismissRequest = onTransferQuittieren, confirmButton = { TextButton(onClick = onTransferQuittieren) { Text("OK") } }, text = { Text(stringResource(R.string.transfer_fehler)) })
+        null -> Unit
     }
     if (loeschenFrage) {
         BestaetigenDialog(

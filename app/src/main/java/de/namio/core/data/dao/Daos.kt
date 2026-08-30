@@ -40,6 +40,9 @@ interface KlasseDao {
     @Query("SELECT id FROM klasse")
     suspend fun alleIds(): List<Long>
 
+    @Query("SELECT * FROM klasse")
+    suspend fun alle(): List<KlasseEntity>
+
     @Insert
     suspend fun insert(klasse: KlasseEntity): Long
 
@@ -57,6 +60,9 @@ interface SchuelerDao {
 
     @Query("SELECT * FROM schueler WHERE klasseId = :klasseId")
     suspend fun fuerKlasse(klasseId: Long): List<SchuelerEntity>
+
+    @Query("SELECT * FROM schueler")
+    suspend fun alle(): List<SchuelerEntity>
 
     @Query("SELECT * FROM schueler WHERE id = :id")
     fun observe(id: Long): Flow<SchuelerEntity?>
@@ -107,6 +113,9 @@ interface LernkarteDao {
     @Query("SELECT * FROM lernkarte WHERE schuelerId = :schuelerId AND modus = :modus")
     suspend fun get(schuelerId: Long, modus: QuizModus): LernkarteEntity?
 
+    @Query("SELECT * FROM lernkarte")
+    suspend fun alle(): List<LernkarteEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(karte: LernkarteEntity): Long
 
@@ -124,12 +133,18 @@ interface QuizSessionDao {
 
     @Query("SELECT * FROM quiz_session WHERE klasseId = :klasseId ORDER BY startedAt DESC")
     fun observeFuerKlasse(klasseId: Long): Flow<List<QuizSessionEntity>>
+
+    @Query("SELECT * FROM quiz_session")
+    suspend fun alle(): List<QuizSessionEntity>
 }
 
 @Dao
 interface QuizAntwortDao {
     @Insert
     suspend fun insert(antwort: QuizAntwortEntity): Long
+
+    @Query("SELECT * FROM quiz_antwort")
+    suspend fun alle(): List<QuizAntwortEntity>
 
     /** Verwechslungspaare einer Klasse (gerichtet gezählt). */
     @Query(
@@ -170,6 +185,9 @@ interface SitzplanDao {
     @Query("SELECT COUNT(*) FROM sitzplan WHERE klasseId = :klasseId")
     suspend fun anzahlFuerKlasse(klasseId: Long): Int
 
+    @Query("SELECT * FROM sitzplan")
+    suspend fun alle(): List<SitzplanEntity>
+
     @Query("UPDATE sitzplan SET istStandard = (id = :planId) WHERE klasseId = :klasseId")
     suspend fun setzeStandard(klasseId: Long, planId: Long)
 
@@ -191,6 +209,9 @@ interface TischDao {
     @Query("SELECT * FROM tisch WHERE sitzplanId = :sitzplanId")
     suspend fun fuerPlan(sitzplanId: Long): List<TischEntity>
 
+    @Query("SELECT * FROM tisch")
+    suspend fun alle(): List<TischEntity>
+
     @Insert
     suspend fun insert(tisch: TischEntity): Long
 
@@ -205,6 +226,9 @@ interface SitzplatzDao {
 
     @Query("SELECT * FROM sitzplatz WHERE sitzplanId = :sitzplanId")
     suspend fun fuerPlan(sitzplanId: Long): List<SitzplatzEntity>
+
+    @Query("SELECT * FROM sitzplatz")
+    suspend fun alle(): List<SitzplatzEntity>
 
     /** Belegte Plätze des Standardplans einer Klasse – Kandidaten für den Sitzplan-Quizmodus. */
     @Query(

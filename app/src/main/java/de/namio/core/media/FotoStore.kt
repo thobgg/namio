@@ -65,6 +65,15 @@ class FotoStore @Inject constructor(@ApplicationContext private val context: Con
         withContext(Dispatchers.IO) { datei(name).delete() }
     }
 
+    /** Alle gespeicherten Fotodateien (für den Export). */
+    fun alleDateien(): List<File> = ordner.listFiles()?.filter { it.isFile && it.name.endsWith(".jpg") }.orEmpty()
+
+    /** Legt eine Fotodatei unverändert ab (Import). */
+    suspend fun schreibeRoh(name: String, bytes: ByteArray) = withContext(Dispatchers.IO) {
+        if (!name.matches(Regex("[A-Za-z0-9_-]+\\.jpg"))) return@withContext
+        datei(name).writeBytes(bytes)
+    }
+
     /** Löscht sämtliche Fotodateien (Alles löschen). */
     suspend fun alleLoeschen() = withContext(Dispatchers.IO) { ordner.listFiles()?.forEach { it.delete() } }
 

@@ -209,7 +209,30 @@
     <string name="einstellungen_neue_karten">New cards per round: %1$d</string>
     <string name="einstellungen_neue_karten_hinweis">How many never-practised students join each quiz round.</string>
     <string name="einstellungen_daten">Data</string>
-    <string name="einstellungen_export_bald">Encrypted export and import are coming.</string>
+    <string name="einstellungen_transfer_hinweis">Back up all classes, photos, progress and seating plans as a password-protected file or move them to another device. Import replaces all existing data.</string>
+    <string name="export_titel">Export</string>
+    <string name="import_titel">Import</string>
+    <string name="export_hinweis">The file is encrypted with AES-256. Without this password it cannot be opened again – it is not stored anywhere.</string>
+    <string name="import_hinweis">Caution: import replaces all data on this device.</string>
+    <string name="transfer_passwort">Password</string>
+    <string name="transfer_passwort_wiederholen">Repeat password</string>
+    <string name="transfer_passwort_regel">At least 6 characters.</string>
+    <string name="export_starten">Export</string>
+    <string name="import_starten">Replace and import</string>
+    <string name="transfer_laeuft">Please wait …</string>
+    <plurals name="export_fertig">
+        <item quantity="one">Export done: %1$d student saved.</item>
+        <item quantity="other">Export done: %1$d students saved.</item>
+    </plurals>
+    <plurals name="import_fertig">
+        <item quantity="one">Import done: %1$d student restored.</item>
+        <item quantity="other">Import done: %1$d students restored.</item>
+    </plurals>
+    <string name="import_falsches_passwort">Wrong password or not a Namio file.</string>
+    <string name="transfer_fehler">That did not work. Check the file and free space.</string>
+    <string name="hinweis_titel">Before you enter real data</string>
+    <string name="hinweis_text">Namio stores names and photos of children – only on this device, encrypted, without internet. Whether you may collect such data is governed by the GDPR, your school law and your school (e.g. parental consent, work device). You must clarify this yourself. The app is a private project without warranty; responsibility for use, device lock and deletion lies with you.</string>
+    <string name="hinweis_verstanden">Understood</string>
     <string name="einstellungen_alles_loeschen">Delete all data</string>
     <string name="einstellungen_alles_loeschen_frage">Permanently delete all classes, students, photos, progress and seating plans? This cannot be undone.</string>
     <string name="sperre_titel">Unlock Namio</string>

@@ -209,7 +209,30 @@
     <string name="einstellungen_neue_karten">Neue Karten pro Runde: %1$d</string>
     <string name="einstellungen_neue_karten_hinweis">Wie viele noch nie gelernte Schüler pro Quizrunde dazukommen.</string>
     <string name="einstellungen_daten">Daten</string>
-    <string name="einstellungen_export_bald">Export und Import als verschlüsselte Datei folgen.</string>
+    <string name="einstellungen_transfer_hinweis">Alle Klassen, Fotos, Lernstände und Sitzpläne als passwortgeschützte Datei sichern oder auf ein anderes Gerät übertragen. Der Import ersetzt alle vorhandenen Daten.</string>
+    <string name="export_titel">Exportieren</string>
+    <string name="import_titel">Importieren</string>
+    <string name="export_hinweis">Die Datei wird mit AES-256 verschlüsselt. Ohne dieses Passwort lässt sie sich nicht wieder öffnen – es wird nirgends gespeichert.</string>
+    <string name="import_hinweis">Achtung: Der Import ersetzt alle Daten auf diesem Gerät.</string>
+    <string name="transfer_passwort">Passwort</string>
+    <string name="transfer_passwort_wiederholen">Passwort wiederholen</string>
+    <string name="transfer_passwort_regel">Mindestens 6 Zeichen.</string>
+    <string name="export_starten">Exportieren</string>
+    <string name="import_starten">Ersetzen und importieren</string>
+    <string name="transfer_laeuft">Bitte warten …</string>
+    <plurals name="export_fertig">
+        <item quantity="one">Export fertig: %1$d Schüler gesichert.</item>
+        <item quantity="other">Export fertig: %1$d Schüler gesichert.</item>
+    </plurals>
+    <plurals name="import_fertig">
+        <item quantity="one">Import fertig: %1$d Schüler übernommen.</item>
+        <item quantity="other">Import fertig: %1$d Schüler übernommen.</item>
+    </plurals>
+    <string name="import_falsches_passwort">Falsches Passwort oder keine Namio-Datei.</string>
+    <string name="transfer_fehler">Das hat nicht geklappt. Datei und Speicherplatz prüfen.</string>
+    <string name="hinweis_titel">Bevor du echte Daten eingibst</string>
+    <string name="hinweis_text">Namio speichert Namen und Fotos von Kindern – nur auf diesem Gerät, verschlüsselt, ohne Internet. Ob du solche Daten erfassen darfst, regeln DSGVO, Schulgesetz und deine Schule (z. B. Einwilligung der Eltern, dienstliches Gerät). Das musst du selbst klären. Die App ist ein privates Projekt ohne Gewähr; die Verantwortung für Nutzung, Gerätesperre und Löschung liegt bei dir.</string>
+    <string name="hinweis_verstanden">Verstanden</string>
     <string name="einstellungen_alles_loeschen">Alle Daten löschen</string>
     <string name="einstellungen_alles_loeschen_frage">Alle Klassen, Schüler, Fotos, Lernstände und Sitzpläne endgültig löschen? Das lässt sich nicht rückgängig machen.</string>
     <string name="sperre_titel">Namio entsperren</string>

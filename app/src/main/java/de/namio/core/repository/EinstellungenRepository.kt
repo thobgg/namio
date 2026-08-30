@@ -33,7 +33,12 @@ class EinstellungenRepository @Inject constructor(private val dataStore: DataSto
     val neueKartenProRunde: Flow<Int> = dataStore.data.map { (it[NEUE_KARTEN] ?: 5).coerceIn(1, 15) }
     suspend fun setzeNeueKartenProRunde(n: Int) { dataStore.edit { it[NEUE_KARTEN] = n.coerceIn(1, 15) } }
 
+    /** Wurde der rechtliche Hinweis beim ersten Start bestätigt? */
+    val hinweisBestaetigt: Flow<Boolean> = dataStore.data.map { it[HINWEIS] ?: false }
+    suspend fun hinweisBestaetigen() { dataStore.edit { it[HINWEIS] = true } }
+
     private companion object {
+        val HINWEIS = booleanPreferencesKey("hinweis_bestaetigt")
         val BLICKRICHTUNG = stringPreferencesKey("blickrichtung")
         val APP_SPERRE = booleanPreferencesKey("app_sperre")
         val NEUE_KARTEN = intPreferencesKey("neue_karten_pro_runde")
