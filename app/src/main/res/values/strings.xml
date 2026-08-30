@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Namio</string>
+
+    <!-- Allgemein -->
+    <string name="abbrechen">Abbrechen</string>
+    <string name="speichern">Speichern</string>
+    <string name="loeschen">Löschen</string>
+    <string name="anlegen">Anlegen</string>
+    <string name="zurueck">Zurück</string>
+    <string name="mehr">Mehr</string>
+    <string name="fehler_speichern">Speichern fehlgeschlagen.</string>
+
+    <!-- Klassenliste -->
+    <string name="klassen_titel">Meine Klassen</string>
+    <string name="klassen_leer">Noch keine Klasse. Lege mit dem Plus unten rechts deine erste an.</string>
+    <string name="klasse_anlegen">Klasse anlegen</string>
+    <string name="klasse_name">Klasse (z. B. 7b)</string>
+    <string name="klasse_schule">Schule</string>
+    <string name="klasse_jahrgang">Schuljahr (z. B. 2026/27)</string>
+    <string name="klasse_schueler_anzahl">%1$d Schüler</string>
+    <string name="klasse_fortschritt">%1$d %% gelernt</string>
+    <string name="klasse_loeschen">Klasse löschen</string>
+    <string name="klasse_loeschen_frage">„%1$s“ mit allen Schülern und Fotos endgültig löschen?</string>
+
+    <!-- Klassendetail -->
+    <string name="schueler_leer">Noch keine Schüler. Füge mit dem Plus den ersten hinzu.</string>
+    <string name="schueler_hinzufuegen">Schüler hinzufügen</string>
+    <string name="schueler_vorname">Vorname</string>
+    <string name="schueler_nachname">Nachname</string>
+    <string name="schueler_spitzname">Spitzname</string>
+    <string name="schueler_notiz">Notiz</string>
+    <string name="geschlecht_maedchen">Mädchen</string>
+    <string name="geschlecht_junge">Junge</string>
+    <string name="schueler_kein_foto">Kein Foto</string>
+    <string name="schueler_foto_von">Foto von %1$s</string>
+
+    <!-- Schülerdetail -->
+    <string name="schueler_titel">Schüler</string>
+    <string name="schueler_loeschen">Schüler löschen</string>
+    <string name="schueler_loeschen_frage">„%1$s“ samt Foto endgültig löschen?</string>
+    <string name="foto_aufnehmen">Foto aufnehmen</string>
+    <string name="foto_aus_galerie">Aus Galerie</string>
+    <string name="avatar_waehlen">Avatar wählen</string>
+    <string name="foto_entfernen">Foto entfernen</string>
+    <string name="lernstand_titel">Lernstand</string>
+    <string name="lernstand_box">Box %1$d von 5</string>
+    <string name="lernstand_neu">noch nicht gelernt</string>
+    <string name="modus_foto_zu_name_mc">Foto → Name (Auswahl)</string>
+    <string name="modus_foto_zu_name_tippen">Foto → Name (Tippen)</string>
+    <string name="modus_name_zu_foto">Name → Foto</string>
+    <string name="modus_sitzplan">Sitzplan</string>
+    <string name="modus_speedrun">Speedrun</string>
+
+    <!-- Fotoaufnahme -->
+    <string name="foto_titel">Foto aufnehmen</string>
+    <string name="foto_hinweis">Gesicht in den Rahmen, dann auslösen.</string>
+    <string name="foto_ausloesen">Auslösen</string>
+    <string name="foto_kamera_wechseln">Kamera wechseln</string>
+    <string name="foto_berechtigung_fehlt">Ohne Kamerazugriff kann Namio kein Foto aufnehmen. Du kannst stattdessen ein Bild aus der Galerie wählen.</string>
+    <string name="foto_berechtigung_anfragen">Kamerazugriff erlauben</string>
+    <string name="foto_fehler">Foto konnte nicht gespeichert werden.</string>
+
+    <!-- Quiz -->
+    <string name="quiz_starten">Quiz</string>
+    <string name="quiz_titel">Quiz · %1$s</string>
+    <string name="quiz_modus_bald">Kommt in einer späteren Version.</string>
+    <string name="quiz_nichts_faellig">Nichts fällig – zum Üben trotzdem starten.</string>
+    <plurals name="quiz_faellig">
+        <item quantity="one">%1$d Karte fällig</item>
+        <item quantity="other">%1$d Karten fällig</item>
+    </plurals>
+    <string name="quiz_beenden">Quiz beenden</string>
+    <string name="quiz_keine_fotos">In dieser Klasse hat noch niemand ein Foto. Ohne Gesicht gibt es nichts zu lernen.</string>
+    <string name="quiz_fortschritt">%1$d von %2$d</string>
+    <string name="quiz_foto_beschreibung">Wer ist das?</string>
+
+    <!-- Ergebnis -->
+    <string name="ergebnis_titel">Runde geschafft</string>
+    <string name="ergebnis_quote">%1$d %%</string>
+    <string name="ergebnis_zaehler">%1$d richtig · %2$d falsch</string>
+    <string name="ergebnis_keine_fehler">Alles richtig. Bis zum nächsten Mal!</string>
+    <string name="ergebnis_fehler_titel">Das solltest du dir noch einmal ansehen</string>
+    <string name="ergebnis_verwechselt_mit">verwechselt mit %1$s</string>
+    <string name="ergebnis_fehler_wiederholen">Fehler wiederholen</string>
+    <string name="ergebnis_fertig">Fertig</string>
+</resources>
