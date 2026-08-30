@@ -52,7 +52,7 @@ enum class PlatzMarkierung { KEINE, AUSGEWAEHLT, RICHTIG, FALSCH }
 val BASIS_BREITE: Dp = 800.dp
 
 /** Verhältnis Tischtiefe zu Platzbreite: mit Namen tiefer, damit Foto und zwei Namenszeilen Platz haben. */
-fun tischTiefe(namenZeigen: Boolean): Float = if (namenZeigen) 1.25f else 0.95f
+fun tischTiefe(namenZeigen: Boolean): Float = if (namenZeigen) 1.12f else 0.95f
 
 /**
  * Zeichnet einen Sitzplan: Tische als Rechtecke (Breite = Plätze × Einheit), darauf die Slots.
@@ -104,7 +104,7 @@ fun SitzplanFlaeche(
                 bestuhlung.tische.forEach { tisch ->
                     val a = SitzplanLogik.anzeige(tisch, blickrichtung)
                     val tischBreite = einheit * tisch.plaetze.coerceAtLeast(1) * 0.96f
-                    val tischHoehe = einheit * tischTiefe(namenZeigen)
+                    val tischHoehe = einheit * tischTiefe(namenZeigen && !tisch.istMoebel)
                     val links = with(dichte) { (breite * a.x - tischBreite / 2).toPx().roundToInt() }
                     val oben = with(dichte) { (hoehe * a.y - tischHoehe / 2).toPx().roundToInt() }
                     TischKachel(
@@ -223,8 +223,8 @@ private fun Slot(
     val zeigeName = namenZeigen && einheit >= 56.dp
     val zweizeilig = einheit >= 64.dp && (schueler?.anzeigeName?.contains(' ') == true)
     val namenStil = when {
-        einheit >= 110.dp -> MaterialTheme.typography.labelLarge
-        einheit >= 80.dp -> MaterialTheme.typography.labelMedium
+        einheit >= 120.dp && !zweizeilig -> MaterialTheme.typography.labelLarge
+        einheit >= 90.dp -> MaterialTheme.typography.labelMedium
         else -> MaterialTheme.typography.labelSmall
     }
     val form = RoundedCornerShape(einheit / 10)
@@ -240,7 +240,7 @@ private fun Slot(
                 SchuelerFoto(
                     datei = schueler.fotoDatei?.let(fotoStore::datei),
                     beschreibung = schueler.vollerName,
-                    modifier = Modifier.size(if (zeigeName) einheit * 0.62f else einheit * 0.75f).clip(RoundedCornerShape(6.dp)),
+                    modifier = Modifier.size(if (zeigeName) einheit * 0.58f else einheit * 0.75f).clip(RoundedCornerShape(6.dp)),
                 )
                 if (zeigeName) {
                     Box(Modifier.width(einheit - 10.dp).clipToBounds(), contentAlignment = Alignment.Center) {

@@ -410,7 +410,7 @@ private fun tischAnker(flaeche: Rect?, spalten: Int, reihen: Int, tisch: Tisch, 
     val a = SitzplanLogik.anzeige(tisch, blickrichtung)
     val einheit = f.width / spalten
     val b = einheit * tisch.plaetze.coerceAtLeast(1) * 0.96f
-    val h = einheit * tischTiefe(true)
+    val h = einheit * tischTiefe(!tisch.istMoebel)
     return Offset(f.left + f.width * a.x - b / 2, f.top + f.height * a.y - h / 2)
 }
 
