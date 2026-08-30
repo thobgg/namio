@@ -25,8 +25,8 @@ android {
         applicationId = "de.namio"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.2"
+        versionCode = 3
+        versionName = "0.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -58,6 +58,11 @@ android {
     }
     buildFeatures {
         compose = true
+    }
+    androidResources {
+        // Nur Deutsch (Standard) und Englisch ausliefern; Pro-App-Sprachwahl ab Android 13.
+        localeFilters += listOf("de", "en")
+        generateLocaleConfig = true
     }
     testOptions {
         unitTests.all { it.useJUnitPlatform() }

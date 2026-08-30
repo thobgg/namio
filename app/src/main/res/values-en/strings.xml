@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Namio</string>
+
+    <!-- General -->
+    <string name="abbrechen">Cancel</string>
+    <string name="speichern">Save</string>
+    <string name="loeschen">Delete</string>
+    <string name="anlegen">Create</string>
+    <string name="zurueck">Back</string>
+    <string name="mehr">More</string>
+    <string name="fehler_speichern">Saving failed.</string>
+
+    <!-- Class list -->
+    <string name="klassen_titel">My Classes</string>
+    <string name="klassen_leer">No class yet. Tap the plus in the bottom right to create your first one.</string>
+    <string name="klasse_anlegen">Create class</string>
+    <string name="klasse_name">Class (e.g. 7b)</string>
+    <string name="klasse_schule">School</string>
+    <string name="klasse_jahrgang">School year (e.g. 2026/27)</string>
+    <string name="klasse_schueler_anzahl">%1$d students</string>
+    <string name="klasse_fortschritt">%1$d %% learned</string>
+    <string name="klasse_loeschen">Delete class</string>
+    <string name="klasse_loeschen_frage">Permanently delete “%1$s” with all students and photos?</string>
+
+    <!-- Class detail -->
+    <string name="schueler_leer">No students yet. Tap the plus to add the first one.</string>
+    <string name="schueler_hinzufuegen">Add student</string>
+    <string name="schueler_vorname">First name</string>
+    <string name="schueler_nachname">Last name</string>
+    <string name="schueler_spitzname">Nickname</string>
+    <string name="schueler_notiz">Note</string>
+    <string name="geschlecht_maedchen">Girl</string>
+    <string name="geschlecht_junge">Boy</string>
+    <string name="schueler_kein_foto">No photo</string>
+    <string name="schueler_foto_von">Photo of %1$s</string>
+
+    <!-- Student detail -->
+    <string name="schueler_titel">Student</string>
+    <string name="schueler_loeschen">Delete student</string>
+    <string name="schueler_loeschen_frage">Permanently delete “%1$s” including the photo?</string>
+    <string name="foto_aufnehmen">Take photo</string>
+    <string name="foto_aus_galerie">From gallery</string>
+    <string name="avatar_waehlen">Choose avatar</string>
+    <string name="foto_entfernen">Remove photo</string>
+    <string name="lernstand_titel">Progress</string>
+    <string name="lernstand_box">Box %1$d of 5</string>
+    <string name="lernstand_neu">not learned yet</string>
+    <string name="modus_foto_zu_name_mc">Photo → Name (choice)</string>
+    <string name="modus_foto_zu_name_tippen">Photo → Name (typing)</string>
+    <string name="modus_name_zu_foto">Name → Photo</string>
+    <string name="modus_sitzplan">Seating plan</string>
+    <string name="modus_speedrun">Speedrun</string>
+
+    <!-- Camera -->
+    <string name="foto_titel">Take photo</string>
+    <string name="foto_hinweis">Put the face in the frame, then shoot.</string>
+    <string name="foto_ausloesen">Shoot</string>
+    <string name="foto_kamera_wechseln">Switch camera</string>
+    <string name="foto_berechtigung_fehlt">Without camera access Namio can’t take photos. You can pick a picture from the gallery instead.</string>
+    <string name="foto_berechtigung_anfragen">Allow camera access</string>
+    <string name="foto_fehler">The photo could not be saved.</string>
+
+    <!-- Quiz -->
+    <string name="quiz_starten">Quiz</string>
+    <string name="quiz_titel">Quiz · %1$s</string>
+    <string name="quiz_modus_bald">Coming in a later version.</string>
+    <string name="quiz_nichts_faellig">Nothing due – start anyway to practice.</string>
+    <plurals name="quiz_faellig">
+        <item quantity="one">%1$d card due</item>
+        <item quantity="other">%1$d cards due</item>
+    </plurals>
+    <string name="quiz_beenden">End quiz</string>
+    <string name="quiz_keine_fotos">Nobody in this class has a photo yet. Without a face there is nothing to learn.</string>
+    <string name="quiz_fortschritt">%1$d of %2$d</string>
+    <string name="quiz_foto_beschreibung">Who is this?</string>
+
+    <!-- Result -->
+    <string name="ergebnis_titel">Round complete</string>
+    <string name="ergebnis_quote">%1$d %%</string>
+    <string name="ergebnis_zaehler">%1$d correct · %2$d wrong</string>
+    <string name="ergebnis_keine_fehler">All correct. See you next time!</string>
+    <string name="ergebnis_fehler_titel">Worth another look</string>
+    <string name="ergebnis_verwechselt_mit">confused with %1$s</string>
+    <string name="ergebnis_fehler_wiederholen">Repeat mistakes</string>
+    <string name="ergebnis_fertig">Done</string>
+</resources>

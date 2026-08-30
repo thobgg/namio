@@ -1,6 +1,6 @@
 # Namio
 
-Android-App, mit der Lehrkräfte die Namen ihrer Schulklassen lernen.
+Android-App, mit der Lehrer die Namen ihrer Schulklassen lernen.
 Klassen anlegen, Fotos zuordnen, per Quiz mit Spaced Repetition üben — komplett offline.
 
 <p align="center">
