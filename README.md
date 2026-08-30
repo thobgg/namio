@@ -56,6 +56,7 @@ Die App verarbeitet Fotos von Minderjährigen. Deshalb gelten harte Regeln, kein
 - Drag & Drop oder Antippen, Einrasten am Raster, Sitzordnung mischen, mehrere Pläne pro Klasse, Plan kopieren
 - Mehrfachauswahl: Tische gemeinsam verschieben, drehen (Buttons oder Zwei-Finger-Drehung) und ausrichten; zwei Kinder mit zwei Tipps tauschen
 - Sperre gegen versehentliche Änderungen, Rückgängig, zufällige Person auslosen (Platz blinkt)
+- Sitzplan als PDF (A4 quer) speichern – mit oder ohne Fotos
 - Blickrichtung umschaltbar: vom Lehrerpult aus oder wie auf dem Papier
 
 **Quiz**
@@ -72,7 +73,8 @@ Die App verarbeitet Fotos von Minderjährigen. Deshalb gelten harte Regeln, kein
 - App-Sperre beim Öffnen (Fingerabdruck, Gesicht oder Geräte-PIN), standardmäßig an
 - Export/Import aller Daten als passwortgeschützte Datei (`.namio`, AES-256-GCM, Schlüssel per PBKDF2) – zum Gerätewechsel oder als Sicherung, ohne Cloud
 - „Alle Daten löschen“ in den Einstellungen, echtes Löschen inklusive Fotodateien
-- Hinweis zur rechtlichen Verantwortung beim ersten Start
+- Hinweis zur rechtlichen Verantwortung beim ersten Start; Erinnerung am Schuljahresende, abgegebene Klassen zu löschen
+- Bedienbar mit TalkBack und großer Schrift
 
 **Lernalgorithmus**
 - Leitner mit fünf Boxen und kurzen Intervallen (sofort · 10 min · 1 Tag · 3 Tage · 7 Tage)
@@ -81,7 +83,7 @@ Die App verarbeitet Fotos von Minderjährigen. Deshalb gelten harte Regeln, kein
 
 ## Geplant
 
-- Erinnerung am Schuljahresende, Accessibility-Durchgang
+- Weitere Feinarbeit nach Rückmeldungen aus dem Unterricht
 
 ## Tech-Stack
 
