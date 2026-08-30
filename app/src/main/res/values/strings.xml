@@ -160,4 +160,17 @@
     <string name="sitzplan_alle_platziert">Alle sitzen. Hierher ziehen, um jemanden vom Plan zu nehmen.</string>
     <string name="quiz_sitzplan_frage">Wo sitzt %1$s?</string>
     <string name="quiz_sitzplan_kein_plan">Für diese Klasse gibt es noch keinen Sitzplan mit Schülern. Leg zuerst einen an.</string>
+
+    <!-- Statistik -->
+    <string name="statistik_oeffnen">Statistik</string>
+    <string name="statistik_titel">Statistik · %1$s</string>
+    <string name="statistik_boxen">Lernstand (Leitner-Boxen)</string>
+    <string name="statistik_ohne_karte">noch nie</string>
+    <string name="statistik_box">Box %1$d</string>
+    <string name="statistik_verlauf">Trefferquote der letzten Runden</string>
+    <string name="statistik_keine_runden">Noch keine Runde in diesem Modus.</string>
+    <string name="statistik_letzte_quote">zuletzt %1$d %%</string>
+    <string name="statistik_verwechslungen">Häufigste Verwechslungen</string>
+    <string name="statistik_keine_verwechslungen">Noch keine Verwechslungen – gut so.</string>
+    <string name="statistik_mal">%1$d-mal verwechselt</string>
 </resources>

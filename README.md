@@ -45,8 +45,12 @@ Die App verarbeitet Fotos von Minderjährigen. Deshalb gelten harte Regeln, kein
 - Blickrichtung umschaltbar: vom Lehrerpult aus oder wie auf dem Papier
 
 **Quiz**
-- Modus *Foto → Name*: Foto oben, vier Namen zur Auswahl
-- Modus *Sitzplan*: „Wo sitzt …?“ – auf den Platz tippen, trainiert die Situation im Klassenraum
+- *Foto → Name (Auswahl)*: Foto oben, vier Namen zur Auswahl
+- *Foto → Name (Tippen)*: Freitext, Tippfehler und fehlende Akzente werden toleriert
+- *Name → Foto*: Name oben, neun Gesichter zur Auswahl
+- *Sitzplan*: „Wo sitzt …?“ – auf den Platz tippen, trainiert die Situation im Klassenraum
+- *Speedrun*: 60 Sekunden, so viele wie möglich – ohne Einfluss auf den Lernstand
+- Statistik je Klasse: Boxverteilung, Trefferquote der letzten Runden, häufigste Verwechslungen
 - Sofortiges Feedback, Fortschrittsbalken, Ergebnis mit Fehlerliste und Wiederholungsrunde
 - Ablenker werden bewusst gewählt: erst frühere Verwechslungen, dann gleicher Anfangsbuchstabe, dann Zufall — immer gleiches Geschlecht, immer aus derselben Klasse
 
@@ -57,8 +61,7 @@ Die App verarbeitet Fotos von Minderjährigen. Deshalb gelten harte Regeln, kein
 
 ## Geplant
 
-- Weitere Modi: Name tippen, Name → Foto, Speedrun
-- CSV-Import (Untis/Excel), Statistik
+- CSV-Import (Untis/Excel)
 - App-Sperre per Biometrie, verschlüsselter Export
 
 ## Tech-Stack

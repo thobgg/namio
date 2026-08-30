@@ -128,6 +128,17 @@ interface QuizAntwortDao {
     @Insert
     suspend fun insert(antwort: QuizAntwortEntity): Long
 
+    /** Verwechslungspaare einer Klasse (gerichtet gezählt). */
+    @Query(
+        """
+        SELECT a.schuelerId AS schuelerId, a.verwechseltMit AS verwechseltMit, COUNT(*) AS anzahl
+        FROM quiz_antwort a JOIN schueler s ON s.id = a.schuelerId
+        WHERE s.klasseId = :klasseId AND a.verwechseltMit IS NOT NULL
+        GROUP BY a.schuelerId, a.verwechseltMit
+        """,
+    )
+    fun observeVerwechslungen(klasseId: Long): Flow<List<VerwechslungZeile>>
+
     /** Verwechslungen eines Schülers, häufigste zuerst – Basis der Ablenkerauswahl. */
     @Query(
         """
@@ -138,6 +149,9 @@ interface QuizAntwortDao {
     )
     suspend fun verwechslungenFuer(schuelerId: Long): List<Long>
 }
+
+/** Abfrageergebnis für Verwechslungspaare. */
+data class VerwechslungZeile(val schuelerId: Long, val verwechseltMit: Long, val anzahl: Int)
 
 @Dao
 interface SitzplanDao {

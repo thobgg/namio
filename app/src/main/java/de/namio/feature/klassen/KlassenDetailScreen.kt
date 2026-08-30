@@ -18,6 +18,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.GridOn
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.AlertDialog
@@ -62,6 +63,7 @@ fun KlassenDetailScreen(
     onSchuelerOeffnen: (Long) -> Unit,
     onQuiz: (Long) -> Unit,
     onSitzplan: (Long) -> Unit,
+    onStatistik: (Long) -> Unit,
     viewModel: KlassenDetailViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -74,6 +76,7 @@ fun KlassenDetailScreen(
         onSchuelerAnlegen = { vor, nach, g -> viewModel.schuelerAnlegen(vor, nach, g, onSchuelerOeffnen) },
         onQuiz = { state.klasse?.let { onQuiz(it.id) } },
         onSitzplan = { state.klasse?.let { onSitzplan(it.id) } },
+        onStatistik = { state.klasse?.let { onStatistik(it.id) } },
     )
 }
 
@@ -95,6 +98,7 @@ private fun KlassenDetailInhalt(
     onSchuelerAnlegen: (String, String, Geschlecht) -> Unit,
     onQuiz: () -> Unit,
     onSitzplan: () -> Unit,
+    onStatistik: () -> Unit,
 ) {
     var dialogOffen by rememberSaveable { mutableStateOf(false) }
 
@@ -109,6 +113,9 @@ private fun KlassenDetailInhalt(
                 },
                 actions = {
                     if (state.schueler.isNotEmpty()) {
+                        IconButton(onClick = onStatistik) {
+                            Icon(Icons.Default.BarChart, contentDescription = stringResource(R.string.statistik_oeffnen))
+                        }
                         IconButton(onClick = onSitzplan) {
                             Icon(Icons.Default.GridOn, contentDescription = stringResource(R.string.sitzplan_oeffnen))
                         }

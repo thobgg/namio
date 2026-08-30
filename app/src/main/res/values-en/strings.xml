@@ -160,4 +160,17 @@
     <string name="sitzplan_alle_platziert">Everyone is seated. Drag here to remove someone from the plan.</string>
     <string name="quiz_sitzplan_frage">Where does %1$s sit?</string>
     <string name="quiz_sitzplan_kein_plan">This class has no seating plan with students yet. Create one first.</string>
+
+    <!-- Statistics -->
+    <string name="statistik_oeffnen">Statistics</string>
+    <string name="statistik_titel">Statistics · %1$s</string>
+    <string name="statistik_boxen">Progress (Leitner boxes)</string>
+    <string name="statistik_ohne_karte">never</string>
+    <string name="statistik_box">Box %1$d</string>
+    <string name="statistik_verlauf">Accuracy of recent rounds</string>
+    <string name="statistik_keine_runden">No rounds in this mode yet.</string>
+    <string name="statistik_letzte_quote">latest %1$d %%</string>
+    <string name="statistik_verwechslungen">Most frequent mix-ups</string>
+    <string name="statistik_keine_verwechslungen">No mix-ups yet – nice.</string>
+    <string name="statistik_mal">mixed up %1$d times</string>
 </resources>
