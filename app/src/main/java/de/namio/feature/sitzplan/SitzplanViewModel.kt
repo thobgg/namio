@@ -16,9 +16,12 @@ import de.namio.core.repository.KlassenRepository
 import de.namio.core.repository.SchuelerRepository
 import de.namio.core.repository.SitzplanRepository
 import de.namio.core.sitzplan.SitzplanLogik
+import de.namio.core.media.SitzplanPdf
+import android.net.Uri
 import de.namio.ui.navigation.Route
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -58,7 +61,21 @@ class SitzplanViewModel @Inject constructor(
     schuelerRepository: SchuelerRepository,
     private val sitzplanRepository: SitzplanRepository,
     private val einstellungen: EinstellungenRepository,
+    private val pdf: SitzplanPdf,
 ) : ViewModel() {
+    private val pdfStatus = MutableStateFlow<Boolean?>(null)
+    /** true = PDF geschrieben, false = Fehler, null = nichts zu melden. */
+    val pdfErgebnis = pdfStatus.asStateFlow()
+    fun pdfQuittieren() { pdfStatus.value = null }
+
+    fun pdfExport(ziel: Uri, mitFotos: Boolean, tafelText: String) {
+        val s = uiState.value; val plan = s.aktiv ?: return
+        viewModelScope.launch {
+            pdfStatus.value = runCatching {
+                pdf.schreibe(ziel, "${s.klasse?.name.orEmpty()} · ${plan.name}", plan, s.bestuhlung, s.schuelerProId, s.blickrichtung, mitFotos, tafelText)
+            }.isSuccess
+        }
+    }
 
     private val klasseId = savedStateHandle.toRoute<Route.Sitzplan>().klasseId
     private val gewaehltePlanId = MutableStateFlow<Long?>(null)

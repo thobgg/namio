@@ -156,6 +156,10 @@
     <string name="tischart_dreier">Triple</string>
     <string name="sitzplan_duplizieren">Duplicate desk</string>
     <string name="sitzplan_kopieren">Copy plan</string>
+    <string name="sitzplan_pdf">Save as PDF</string>
+    <string name="sitzplan_pdf_mit_fotos">Include photos</string>
+    <string name="sitzplan_pdf_erstellen">Create PDF</string>
+    <string name="sitzplan_pdf_fertig">PDF saved.</string>
     <string name="sitzplan_kopieren_mit_schuelern">Include students</string>
     <string name="sitzplan_mischen_frage">The plan is locked. Shuffle the seating anyway? (Undo is available in edit mode afterwards.)</string>
     <string name="sitzplan_mischen_ja">Shuffle</string>
@@ -241,6 +245,9 @@
     </plurals>
     <string name="import_falsches_passwort">Wrong password or not a Namio file.</string>
     <string name="transfer_fehler">That did not work. Check the file and free space.</string>
+    <string name="erinnerung_titel">School year over?</string>
+    <string name="erinnerung_text">You no longer need classes you hand over: delete them including photos (⋮ on the class or Settings → Delete all data). That protects the children – and you.</string>
+    <string name="erinnerung_ok">Got it, don’t show again this year</string>
     <string name="hinweis_titel">Before you enter real data</string>
     <string name="hinweis_text">Namio stores names and photos of children – only on this device, encrypted, without internet. Whether you may collect such data is governed by the GDPR, your school law and your school (e.g. parental consent, work device). You must clarify this yourself. The app is a private project without warranty; responsibility for use, device lock and deletion lies with you.</string>
     <string name="hinweis_verstanden">Understood</string>

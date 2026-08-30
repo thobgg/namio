@@ -37,7 +37,12 @@ class EinstellungenRepository @Inject constructor(private val dataStore: DataSto
     val hinweisBestaetigt: Flow<Boolean> = dataStore.data.map { it[HINWEIS] ?: false }
     suspend fun hinweisBestaetigen() { dataStore.edit { it[HINWEIS] = true } }
 
+    /** Jahr, in dem die Schuljahresende-Erinnerung zuletzt weggeklickt wurde (0 = nie). */
+    val erinnerungJahr: Flow<Int> = dataStore.data.map { it[ERINNERUNG_JAHR] ?: 0 }
+    suspend fun erinnerungQuittieren(jahr: Int) { dataStore.edit { it[ERINNERUNG_JAHR] = jahr } }
+
     private companion object {
+        val ERINNERUNG_JAHR = intPreferencesKey("erinnerung_jahr")
         val HINWEIS = booleanPreferencesKey("hinweis_bestaetigt")
         val BLICKRICHTUNG = stringPreferencesKey("blickrichtung")
         val APP_SPERRE = booleanPreferencesKey("app_sperre")

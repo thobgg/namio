@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -63,6 +64,7 @@ fun KlassenListeScreen(
         state = state,
         onKlasseOeffnen = onKlasseOeffnen,
         onEinstellungen = onEinstellungen,
+        onErinnerungQuittieren = viewModel::erinnerungQuittieren,
         onAnlegen = viewModel::anlegen,
         onLoeschen = viewModel::loeschen,
     )
@@ -84,6 +86,7 @@ private fun KlassenListeInhalt(
     onEinstellungen: () -> Unit,
     onAnlegen: (String, String, String) -> Unit,
     onLoeschen: (Long) -> Unit,
+    onErinnerungQuittieren: () -> Unit = {},
 ) {
     var dialogOffen by rememberSaveable { mutableStateOf(false) }
     var zuLoeschen by remember { mutableStateOf<KlasseUebersicht?>(null) }
@@ -120,6 +123,22 @@ private fun KlassenListeInhalt(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.fillMaxSize(),
             ) {
+                if (state.schuljahresende) {
+                    item(key = "erinnerung") {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
+                            modifier = Modifier.widthIn(max = INHALT_MAX_BREITE).fillMaxWidth(),
+                        ) {
+                            Column(Modifier.padding(16.dp)) {
+                                Text(stringResource(R.string.erinnerung_titel), style = MaterialTheme.typography.titleMedium)
+                                Text(stringResource(R.string.erinnerung_text), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 4.dp))
+                                Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.End) {
+                                    TextButton(onClick = onErinnerungQuittieren) { Text(stringResource(R.string.erinnerung_ok)) }
+                                }
+                            }
+                        }
+                    }
+                }
                 items(state.klassen, key = { it.klasse.id }) { eintrag ->
                     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                         KlassenKarte(

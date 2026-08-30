@@ -18,14 +18,18 @@ data class KlassenListeUiState(
     val klassen: List<KlasseUebersicht> = emptyList(),
     val laedt: Boolean = true,
     val hinweisZeigen: Boolean = false,
+    val schuljahresende: Boolean = false,
 )
 
 @HiltViewModel
 class KlassenListeViewModel @Inject constructor(
     private val repository: KlassenRepository,
     private val einstellungen: EinstellungenRepository,
+    private val clock: java.time.Clock,
     demoDaten: DemoDaten,
 ) : ViewModel() {
+
+    fun erinnerungQuittieren() { viewModelScope.launch { einstellungen.erinnerungQuittieren(java.time.LocalDate.now(clock).year) } }
 
     fun hinweisBestaetigen() { viewModelScope.launch { einstellungen.hinweisBestaetigen() } }
 
@@ -33,8 +37,11 @@ class KlassenListeViewModel @Inject constructor(
         viewModelScope.launch { runCatching { demoDaten.anlegenFallsErsterStart() } }
     }
 
-    val uiState: StateFlow<KlassenListeUiState> = combine(repository.observeUebersicht(), einstellungen.hinweisBestaetigt) { klassen, bestaetigt ->
-        KlassenListeUiState(klassen = klassen, laedt = false, hinweisZeigen = !bestaetigt)
+    val uiState: StateFlow<KlassenListeUiState> = combine(repository.observeUebersicht(), einstellungen.hinweisBestaetigt, einstellungen.erinnerungJahr) { klassen, bestaetigt, jahr ->
+        KlassenListeUiState(
+            klassen = klassen, laedt = false, hinweisZeigen = !bestaetigt,
+            schuljahresende = bestaetigt && de.namio.core.lernen.Schuljahresende.erinnern(java.time.LocalDate.now(clock), jahr, klassen.size),
+        )
     }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), KlassenListeUiState())
 

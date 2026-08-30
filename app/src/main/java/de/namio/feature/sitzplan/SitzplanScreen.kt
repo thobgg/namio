@@ -94,6 +94,8 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.namio.R
 import de.namio.core.media.FotoStore
@@ -127,6 +129,34 @@ fun SitzplanScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val fotoStore = rememberFotoStore()
+    val pdfErgebnis by viewModel.pdfErgebnis.collectAsStateWithLifecycle()
+    var pdfMitFotos by rememberSaveable { mutableStateOf(true) }
+    var pdfDialog by rememberSaveable { mutableStateOf(false) }
+    val tafelText = stringResource(R.string.sitzplan_tafel)
+    val pdfZiel = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/pdf")) { uri ->
+        if (uri != null) viewModel.pdfExport(uri, pdfMitFotos, tafelText)
+    }
+    if (pdfDialog) {
+        AlertDialog(
+            onDismissRequest = { pdfDialog = false },
+            title = { Text(stringResource(R.string.sitzplan_pdf)) },
+            text = {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.sitzplan_pdf_mit_fotos), modifier = Modifier.weight(1f))
+                    Switch(checked = pdfMitFotos, onCheckedChange = { pdfMitFotos = it })
+                }
+            },
+            confirmButton = { TextButton(onClick = { pdfDialog = false; pdfZiel.launch("sitzplan-" + (state.klasse?.name ?: "") + "-" + (state.aktiv?.name ?: "") + ".pdf") }) { Text(stringResource(R.string.sitzplan_pdf_erstellen)) } },
+            dismissButton = { TextButton(onClick = { pdfDialog = false }) { Text(stringResource(R.string.abbrechen)) } },
+        )
+    }
+    pdfErgebnis?.let { ok ->
+        AlertDialog(
+            onDismissRequest = viewModel::pdfQuittieren,
+            confirmButton = { TextButton(onClick = viewModel::pdfQuittieren) { Text("OK") } },
+            text = { Text(stringResource(if (ok) R.string.sitzplan_pdf_fertig else R.string.transfer_fehler)) },
+        )
+    }
     SitzplanInhalt(
         state = state,
         fotoStore = fotoStore,
@@ -153,6 +183,7 @@ fun SitzplanScreen(
             verschiebeMehrere = viewModel::verschiebeMehrere,
             ausrichten = viewModel::ausrichten,
             kopieren = viewModel::kopieren,
+            pdf = { pdfDialog = true },
             blickrichtung = viewModel::blickrichtungUmschalten,
             sperre = viewModel::sperreUmschalten,
             rueckgaengig = viewModel::rueckgaengig,
@@ -185,6 +216,7 @@ data class SitzplanAktionen(
     val verschiebeMehrere: (Set<Long>, Float, Float) -> Unit,
     val ausrichten: (List<Long>, SitzplanLogik.Ausrichtung) -> Unit,
     val kopieren: (String, Boolean) -> Unit,
+    val pdf: () -> Unit,
     val blickrichtung: () -> Unit,
     val sperre: () -> Unit,
     val rueckgaengig: () -> Unit,
@@ -292,6 +324,7 @@ private fun SitzplanInhalt(
                                 DropdownMenuItem(text = { Text(stringResource(R.string.sitzplan_neu)) }, onClick = { menueOffen = false; neuDialog = true })
                                 DropdownMenuItem(text = { Text(stringResource(R.string.sitzplan_bearbeiten)) }, onClick = { menueOffen = false; bearbeitenDialog = true })
                                 DropdownMenuItem(text = { Text(stringResource(R.string.sitzplan_kopieren)) }, onClick = { menueOffen = false; kopierenDialog = true })
+                                DropdownMenuItem(text = { Text(stringResource(R.string.sitzplan_pdf)) }, onClick = { menueOffen = false; aktionen.pdf() })
                                 if (!plan.istStandard) {
                                     DropdownMenuItem(text = { Text(stringResource(R.string.sitzplan_als_standard)) }, onClick = { menueOffen = false; aktionen.alsStandard() })
                                 }
