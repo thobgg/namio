@@ -53,7 +53,9 @@ Die App verarbeitet Fotos von Minderjährigen. Deshalb gelten harte Regeln, kein
 **Sitzplan**
 - Frei positionierbare, drehbare Plätze – schräge Doppeltische, U-Form, Gruppentische, alles was der Raum hergibt
 - Vorlagen zum Start (Doppeltischreihen, U-Form, Gruppentische), Partnerplatz mit einem Tipp, Möbel wie Pult und PC als Beschriftung
-- Drag & Drop oder Antippen, Einrasten am Raster, Sitzordnung mischen, mehrere Pläne pro Klasse
+- Drag & Drop oder Antippen, Einrasten am Raster, Sitzordnung mischen, mehrere Pläne pro Klasse, Plan kopieren
+- Mehrfachauswahl: Tische gemeinsam verschieben, drehen (Buttons oder Zwei-Finger-Drehung) und ausrichten; zwei Kinder mit zwei Tipps tauschen
+- Sperre gegen versehentliche Änderungen, Rückgängig, zufällige Person auslosen (Platz blinkt)
 - Blickrichtung umschaltbar: vom Lehrerpult aus oder wie auf dem Papier
 
 **Quiz**
@@ -80,7 +82,6 @@ Die App verarbeitet Fotos von Minderjährigen. Deshalb gelten harte Regeln, kein
 ## Geplant
 
 - Erinnerung am Schuljahresende, Accessibility-Durchgang
-- Sitzplan: Mehrfachauswahl, Ausrichten, Drehen per Geste, Plan kopieren
 
 ## Tech-Stack
 

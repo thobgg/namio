@@ -120,7 +120,7 @@
     <string name="sitzplan_tafel">Board</string>
     <string name="sitzplan_blickrichtung">Switch viewing direction</string>
     <string name="sitzplan_mischen">Shuffle seating</string>
-    <string name="sitzplan_hinweis">Tap to select, drag to move (a student or the whole desk). Tap free space for a new desk of the chosen kind.</string>
+    <string name="sitzplan_hinweis">Tap a child, then another: swap. Tap a desk (long-press on an occupied seat): select, several possible. Drag moves. Free space: new desk.</string>
     <string name="sitzplan_hinweis_gewaehlt">Desk selected: rotate, change seats, label or delete.</string>
     <string name="sitzplan_hinweis_platz">Now tap a seat or a free spot.</string>
     <string name="sitzplan_drehen_links">Rotate 15° left</string>
@@ -155,6 +155,17 @@
     <string name="tischart_doppel">Paired</string>
     <string name="tischart_dreier">Triple</string>
     <string name="sitzplan_duplizieren">Duplicate desk</string>
+    <string name="sitzplan_kopieren">Copy plan</string>
+    <string name="sitzplan_kopieren_mit_schuelern">Include students</string>
+    <string name="sitzplan_mischen_frage">The plan is locked. Shuffle the seating anyway? (Undo is available in edit mode afterwards.)</string>
+    <string name="sitzplan_mischen_ja">Shuffle</string>
+    <string name="sitzplan_mehrere">%1$d desks</string>
+    <string name="sitzplan_hinweis_mehrere">Several desks selected: drag together, rotate (buttons or two-finger twist) or align.</string>
+    <string name="ausrichten_zeile">Row</string>
+    <string name="ausrichten_spalte">Column</string>
+    <string name="ausrichten_drehung">Rotation</string>
+    <string name="ausrichten_abstand">Spacing</string>
+    <string name="auswahl_aufheben">Clear selection</string>
     <string name="sitzplan_platz_loeschen">Delete desk</string>
     <string name="sitzplan_unplatziert">Not seated yet: %1$d</string>
     <string name="sitzplan_alle_platziert">Everyone is seated. Drag here to remove someone from the plan.</string>

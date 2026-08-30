@@ -15,6 +15,7 @@ import de.namio.core.repository.EinstellungenRepository
 import de.namio.core.repository.KlassenRepository
 import de.namio.core.repository.SchuelerRepository
 import de.namio.core.repository.SitzplanRepository
+import de.namio.core.sitzplan.SitzplanLogik
 import de.namio.ui.navigation.Route
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -169,6 +170,12 @@ class SitzplanViewModel @Inject constructor(
     fun entfernen(schuelerId: Long) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.entfernen(id, schuelerId) } }
     fun tischLoeschen(tischId: Long) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.tischLoeschen(id, tischId) } }
     fun mischen() = mitPlan { id -> viewModelScope.launch { sitzplanRepository.mischen(id) } }
+    /** Mischen trotz Sperre (nach Rückfrage) – mit Undo-Eintrag. */
+    fun mischenErzwingen() = mitPlanImmer { id -> merken(); viewModelScope.launch { sitzplanRepository.mischen(id) } }
+    fun drehenMehrere(ids: Set<Long>, grad: Float) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.drehenMehrere(id, ids, grad) } }
+    fun verschiebeMehrere(ids: Set<Long>, dx: Float, dy: Float) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.verschiebeMehrere(id, ids, dx, dy) } }
+    fun ausrichten(ids: List<Long>, art: SitzplanLogik.Ausrichtung) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.ausrichten(id, ids, art) } }
+    fun kopieren(name: String, mitSchuelern: Boolean) = mitPlanImmer { id -> viewModelScope.launch { sitzplanRepository.kopieren(id, name, mitSchuelern)?.let { gewaehltePlanId.value = it } } }
 
     private companion object {
         const val MAX_VERLAUF = 30

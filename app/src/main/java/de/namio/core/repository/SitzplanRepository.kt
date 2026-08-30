@@ -95,6 +95,17 @@ class SitzplanRepository @Inject constructor(
     suspend fun entfernen(planId: Long, schuelerId: Long) = schreibe(planId) { _, b -> SitzplanLogik.entfernen(b, schuelerId) }
     suspend fun tischLoeschen(planId: Long, tischId: Long) = schreibe(planId) { _, b -> SitzplanLogik.tischLoeschen(b, tischId) }
     suspend fun mischen(planId: Long) = schreibe(planId) { _, b -> SitzplanLogik.mischen(b) }
+    suspend fun drehenMehrere(planId: Long, ids: Set<Long>, grad: Float) = schreibe(planId) { _, b -> SitzplanLogik.drehenMehrere(b, ids, grad) }
+    suspend fun verschiebeMehrere(planId: Long, ids: Set<Long>, dx: Float, dy: Float) = schreibe(planId) { p, b -> SitzplanLogik.verschiebeMehrere(b, ids, dx, dy, p.spalten, p.reihen, p.einrasten) }
+    suspend fun ausrichten(planId: Long, ids: List<Long>, art: SitzplanLogik.Ausrichtung) = schreibe(planId) { _, b -> SitzplanLogik.ausrichten(b, ids, art) }
+
+    /** Kopiert einen Plan (gleiche Klasse) samt Bestuhlung, optional mit Schülern. Liefert die neue ID. */
+    suspend fun kopieren(planId: Long, neuerName: String, mitSchuelern: Boolean): Long? = db.withTransaction {
+        val plan = sitzplanDao.get(planId) ?: return@withTransaction null
+        val id = sitzplanDao.insert(plan.copy(id = 0, name = neuerName.trim().ifBlank { plan.name + " (Kopie)" }, istStandard = false))
+        schreibeBestuhlung(id, SitzplanLogik.kopiereFuer(lies(planId), id, mitSchuelern))
+        id
+    }
 
     /** Setzt die Bestuhlung komplett – für Rückgängig. */
     suspend fun setzeBestuhlung(planId: Long, bestuhlung: Bestuhlung) {

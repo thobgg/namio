@@ -132,8 +132,59 @@ object SitzplanLogik {
         return b.copy(tische = b.tische.map { if (it.id == tischId) it.copy(x = nx, y = ny) else it })
     }
 
-    fun drehen(b: Bestuhlung, tischId: Long, grad: Float): Bestuhlung =
-        b.copy(tische = b.tische.map { if (it.id == tischId) it.copy(drehung = ((it.drehung + grad) % 360 + 360) % 360) else it })
+    fun drehen(b: Bestuhlung, tischId: Long, grad: Float): Bestuhlung = drehenMehrere(b, setOf(tischId), grad)
+
+    /** Dreht alle Tische in [ids] um [grad]. */
+    fun drehenMehrere(b: Bestuhlung, ids: Set<Long>, grad: Float): Bestuhlung =
+        b.copy(tische = b.tische.map { if (it.id in ids) it.copy(drehung = ((it.drehung + grad) % 360 + 360) % 360) else it })
+
+    /** Verschiebt alle Tische in [ids] um ([dx], [dy]) in Raumkoordinaten; hält sie im Raum, rastet optional ein. */
+    fun verschiebeMehrere(b: Bestuhlung, ids: Set<Long>, dx: Float, dy: Float, spalten: Int, reihen: Int, einrasten: Boolean): Bestuhlung =
+        b.copy(tische = b.tische.map { if (it.id in ids) { val (nx, ny) = position(it.x + dx, it.y + dy, spalten, reihen, einrasten); it.copy(x = nx, y = ny) } else it })
+
+    /** Wie sollen markierte Tische ausgerichtet werden? */
+    enum class Ausrichtung { GLEICHE_ZEILE, GLEICHE_SPALTE, GLEICHE_DREHUNG, GLEICHER_ABSTAND }
+
+    /**
+     * Richtet die Tische [ids] aus. Anker ist der erste Tisch in [ids] (Reihenfolge der Auswahl):
+     * gleiche Zeile = gleiches y, gleiche Spalte = gleiches x, gleiche Drehung = Ankerdrehung,
+     * gleicher Abstand = gleichmäßig zwischen dem ersten und letzten Tisch (entlang der längeren Achse) verteilen.
+     */
+    fun ausrichten(b: Bestuhlung, ids: List<Long>, art: Ausrichtung): Bestuhlung {
+        val anker = b.tisch(ids.firstOrNull() ?: return b) ?: return b
+        val menge = ids.toSet()
+        return when (art) {
+            Ausrichtung.GLEICHE_ZEILE -> b.copy(tische = b.tische.map { if (it.id in menge) it.copy(y = anker.y) else it })
+            Ausrichtung.GLEICHE_SPALTE -> b.copy(tische = b.tische.map { if (it.id in menge) it.copy(x = anker.x) else it })
+            Ausrichtung.GLEICHE_DREHUNG -> b.copy(tische = b.tische.map { if (it.id in menge) it.copy(drehung = anker.drehung) else it })
+            Ausrichtung.GLEICHER_ABSTAND -> {
+                val gewaehlt = ids.mapNotNull(b::tisch)
+                if (gewaehlt.size < 3) return b
+                val horizontal = (gewaehlt.maxOf { it.x } - gewaehlt.minOf { it.x }) >= (gewaehlt.maxOf { it.y } - gewaehlt.minOf { it.y })
+                val sortiert = gewaehlt.sortedBy { if (horizontal) it.x else it.y }
+                val erster = sortiert.first(); val letzter = sortiert.last()
+                val neuePos = sortiert.mapIndexed { i, t ->
+                    val f = i / (sortiert.size - 1f)
+                    t.id to (if (horizontal) (erster.x + (letzter.x - erster.x) * f) to (erster.y + (letzter.y - erster.y) * f) else (erster.x + (letzter.x - erster.x) * f) to (erster.y + (letzter.y - erster.y) * f))
+                }.toMap()
+                b.copy(tische = b.tische.map { t -> neuePos[t.id]?.let { (x, y) -> t.copy(x = x, y = y) } ?: t })
+            }
+        }
+    }
+
+    /** Kopiert eine Bestuhlung in einen anderen Plan (neue, negative IDs), optional ohne Schüler. */
+    fun kopiereFuer(b: Bestuhlung, sitzplanId: Long, mitSchuelern: Boolean): Bestuhlung {
+        var out = Bestuhlung()
+        for (t in b.tische) {
+            out = tischHinzufuegen(out, sitzplanId, t.x, t.y, t.drehung, t.plaetze, t.beschriftung, 1, 1, einrasten = false, breite = t.breite)
+            val neu = out.tische.last().id
+            if (mitSchuelern) {
+                val alteSlots = b.plaetzeVon(t.id)
+                out = out.copy(plaetze = out.plaetze.map { p -> if (p.tischId == neu) p.copy(schuelerId = alteSlots.firstOrNull { it.slot == p.slot }?.schuelerId) else p })
+            }
+        }
+        return out
+    }
 
     /** Ändert die Tischbreite in Platzbreiten (0,5–[MAX_BREITE]). */
     fun breiteAendern(b: Bestuhlung, tischId: Long, breite: Float): Bestuhlung =

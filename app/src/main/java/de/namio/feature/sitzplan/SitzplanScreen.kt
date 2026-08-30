@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.runtime.LaunchedEffect
 import kotlinx.coroutines.delay
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.horizontalScroll
@@ -144,6 +145,11 @@ fun SitzplanScreen(
             entfernen = viewModel::entfernen,
             tischLoeschen = viewModel::tischLoeschen,
             mischen = viewModel::mischen,
+            mischenErzwingen = viewModel::mischenErzwingen,
+            drehenMehrere = viewModel::drehenMehrere,
+            verschiebeMehrere = viewModel::verschiebeMehrere,
+            ausrichten = viewModel::ausrichten,
+            kopieren = viewModel::kopieren,
             blickrichtung = viewModel::blickrichtungUmschalten,
             sperre = viewModel::sperreUmschalten,
             rueckgaengig = viewModel::rueckgaengig,
@@ -171,6 +177,11 @@ data class SitzplanAktionen(
     val entfernen: (Long) -> Unit,
     val tischLoeschen: (Long) -> Unit,
     val mischen: () -> Unit,
+    val mischenErzwingen: () -> Unit,
+    val drehenMehrere: (Set<Long>, Float) -> Unit,
+    val verschiebeMehrere: (Set<Long>, Float, Float) -> Unit,
+    val ausrichten: (List<Long>, SitzplanLogik.Ausrichtung) -> Unit,
+    val kopieren: (String, Boolean) -> Unit,
     val blickrichtung: () -> Unit,
     val sperre: () -> Unit,
     val rueckgaengig: () -> Unit,
@@ -198,7 +209,12 @@ private fun SitzplanInhalt(
     var loeschenFrage by rememberSaveable { mutableStateOf(false) }
     var beschriftenDialog by rememberSaveable { mutableStateOf(false) }
     var menueOffen by remember { mutableStateOf(false) }
-    var ausgewaehlterTisch by remember { mutableStateOf<Long?>(null) }
+    var auswahl by remember { mutableStateOf<List<Long>>(emptyList()) }
+    val ausgewaehlterTisch = auswahl.lastOrNull()
+    var kopierenDialog by rememberSaveable { mutableStateOf(false) }
+    var mischenFrage by rememberSaveable { mutableStateOf(false) }
+    var twistRest by remember { mutableStateOf(0f) }
+    fun tischWaehlen(id: Long) { auswahl = if (id in auswahl) auswahl - id else auswahl + id }
     var ausgewaehlterSchueler by remember { mutableStateOf<Long?>(null) }
     var drag by remember { mutableStateOf<Drag?>(null) }
     var zoom by rememberSaveable { mutableStateOf(1f) }
@@ -230,7 +246,10 @@ private fun SitzplanInhalt(
                 raum != null -> aktionen.ablegen(d.schueler.id, raum.first, raum.second)
                 leiste?.contains(d.position) == true -> aktionen.entfernen(d.schueler.id)
             }
-            is Drag.Tisch -> if (raum != null) aktionen.verschieben(d.tisch.id, raum.first, raum.second)
+            is Drag.Tisch -> if (raum != null) {
+                if (auswahl.size > 1 && d.tisch.id in auswahl) aktionen.verschiebeMehrere(auswahl.toSet(), raum.first - d.tisch.x, raum.second - d.tisch.y)
+                else aktionen.verschieben(d.tisch.id, raum.first, raum.second)
+            }
         }
     }
 
@@ -247,7 +266,7 @@ private fun SitzplanInhalt(
                         if (!state.gesperrt) {
                             IconButton(onClick = aktionen.rueckgaengig, enabled = state.kannRueckgaengig) { Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = stringResource(R.string.sitzplan_rueckgaengig)) }
                         }
-                        IconButton(onClick = { aktionen.sperre(); ausgewaehlterTisch = null; ausgewaehlterSchueler = null }) {
+                        IconButton(onClick = { aktionen.sperre(); auswahl = emptyList(); ausgewaehlterSchueler = null }) {
                             Icon(
                                 if (state.gesperrt) Icons.Default.Lock else Icons.Default.LockOpen,
                                 contentDescription = stringResource(if (state.gesperrt) R.string.sitzplan_entsperren else R.string.sitzplan_sperren),
@@ -255,14 +274,13 @@ private fun SitzplanInhalt(
                             )
                         }
                         IconButton(onClick = aktionen.blickrichtung) { Icon(Icons.Default.Cameraswitch, contentDescription = stringResource(R.string.sitzplan_blickrichtung)) }
-                        if (!state.gesperrt) {
-                            IconButton(onClick = aktionen.mischen) { Icon(Icons.Default.Shuffle, contentDescription = stringResource(R.string.sitzplan_mischen)) }
-                        }
+                        IconButton(onClick = { if (state.gesperrt) mischenFrage = true else aktionen.mischen() }) { Icon(Icons.Default.Shuffle, contentDescription = stringResource(R.string.sitzplan_mischen)) }
                         Box {
                             IconButton(onClick = { menueOffen = true }) { Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.mehr)) }
                             DropdownMenu(expanded = menueOffen, onDismissRequest = { menueOffen = false }) {
                                 DropdownMenuItem(text = { Text(stringResource(R.string.sitzplan_neu)) }, onClick = { menueOffen = false; neuDialog = true })
                                 DropdownMenuItem(text = { Text(stringResource(R.string.sitzplan_bearbeiten)) }, onClick = { menueOffen = false; bearbeitenDialog = true })
+                                DropdownMenuItem(text = { Text(stringResource(R.string.sitzplan_kopieren)) }, onClick = { menueOffen = false; kopierenDialog = true })
                                 if (!plan.istStandard) {
                                     DropdownMenuItem(text = { Text(stringResource(R.string.sitzplan_als_standard)) }, onClick = { menueOffen = false; aktionen.alsStandard() })
                                 }
@@ -313,6 +331,7 @@ private fun SitzplanInhalt(
                                 when {
                                     state.gesperrt -> R.string.sitzplan_hinweis_gesperrt
                                     ausgewaehlterSchueler != null -> R.string.sitzplan_hinweis_platz
+                                    auswahl.size > 1 -> R.string.sitzplan_hinweis_mehrere
                                     gewaehlt != null -> R.string.sitzplan_hinweis_gewaehlt
                                     else -> R.string.sitzplan_hinweis
                                 },
@@ -338,11 +357,17 @@ private fun SitzplanInhalt(
                                     basisBreite = (viewport - 16.dp).coerceAtMost(BASIS_BREITE),
                                     modifier = Modifier.padding(8.dp),
                                     rasterZeigen = plan.einrasten && !state.gesperrt,
-                                    tischMarkierung = { it.id == ausgewaehlterTisch },
-                                    slotMarkierung = { slot -> if (blinkAn && slot.schuelerId != null && slot.schuelerId == state.ausgelost) PlatzMarkierung.RICHTIG else PlatzMarkierung.KEINE },
+                                    tischMarkierung = { it.id in auswahl },
+                                    slotMarkierung = { slot ->
+                                        when {
+                                            blinkAn && slot.schuelerId != null && slot.schuelerId == state.ausgelost -> PlatzMarkierung.RICHTIG
+                                            slot.schuelerId != null && slot.schuelerId == ausgewaehlterSchueler -> PlatzMarkierung.AUSGEWAEHLT
+                                            else -> PlatzMarkierung.KEINE
+                                        }
+                                    },
                                     flaechenModifier = Modifier
                                         .onGloballyPositioned { flaeche = it.boundsInRoot() }
-                                        .pointerInput(plan.id, ausgewaehlterSchueler, ausgewaehlterTisch, state.blickrichtung, state.gesperrt) {
+                                        .pointerInput(plan.id, ausgewaehlterSchueler, auswahl.isEmpty(), state.blickrichtung, state.gesperrt) {
                                             if (state.gesperrt) return@pointerInput
                                             detectTapGestures { lokal ->
                                                 val f = flaeche ?: return@detectTapGestures
@@ -350,16 +375,25 @@ private fun SitzplanInhalt(
                                                 val s = ausgewaehlterSchueler
                                                 when {
                                                     s != null -> { aktionen.ablegen(s, raum.first, raum.second); ausgewaehlterSchueler = null }
-                                                    ausgewaehlterTisch != null -> ausgewaehlterTisch = null
+                                                    auswahl.isNotEmpty() -> auswahl = emptyList()
                                                     else -> aktionen.tischHinzufuegen(raum.first, raum.second, tischArt.plaetze, tischArt.breite)
                                                 }
+                                            }
+                                        }
+                                        .pointerInput(plan.id, auswahl, state.gesperrt) {
+                                            // Zwei-Finger-Drehung dreht die markierten Tische in 5°-Schritten
+                                            if (state.gesperrt || auswahl.isEmpty()) return@pointerInput
+                                            detectTransformGestures { _, _, _, rotation ->
+                                                twistRest += rotation
+                                                val schritte = (twistRest / 5f).toInt()
+                                                if (schritte != 0) { aktionen.drehenMehrere(auswahl.toSet(), schritte * 5f); twistRest -= schritte * 5f }
                                             }
                                         },
                                     tischModifier = { tisch ->
                                         if (state.gesperrt) Modifier else Modifier
                                             .pointerInput(tisch.id, ausgewaehlterSchueler) {
                                                 detectTapGestures {
-                                                    if (ausgewaehlterSchueler == null) ausgewaehlterTisch = if (ausgewaehlterTisch == tisch.id) null else tisch.id
+                                                    if (ausgewaehlterSchueler == null) tischWaehlen(tisch.id)
                                                 }
                                             }
                                             .dragQuelle(
@@ -373,24 +407,32 @@ private fun SitzplanInhalt(
                                     slotModifier = { tisch, slot ->
                                         val sitzender = slot.schuelerId?.let(state.schuelerProId::get)
                                         if (state.gesperrt) Modifier else Modifier
-                                            .pointerInput(slot.id, ausgewaehlterSchueler) {
-                                                detectTapGestures {
+                                            .pointerInput(slot.id, ausgewaehlterSchueler, sitzender?.id) {
+                                                detectTapGestures(
+                                                    onLongPress = { tischWaehlen(tisch.id) },
+                                                ) {
                                                     val s = ausgewaehlterSchueler
-                                                    if (s != null) {
-                                                        val (x, y) = SitzplanLogik.slotPosition(tisch, slot.slot, plan.spalten, plan.reihen)
-                                                        aktionen.ablegen(s, x, y)
-                                                        ausgewaehlterSchueler = null
-                                                    } else {
-                                                        ausgewaehlterTisch = if (ausgewaehlterTisch == tisch.id) null else tisch.id
+                                                    when {
+                                                        s != null -> {
+                                                            val (x, y) = SitzplanLogik.slotPosition(tisch, slot.slot, plan.spalten, plan.reihen)
+                                                            aktionen.ablegen(s, x, y)   // leer: setzen, belegt: tauschen
+                                                            ausgewaehlterSchueler = null
+                                                        }
+                                                        sitzender != null -> { ausgewaehlterSchueler = sitzender.id; auswahl = emptyList() }
+                                                        else -> tischWaehlen(tisch.id)
                                                     }
                                                 }
                                             }
                                             .then(
                                                 if (sitzender != null) {
                                                     Modifier.dragQuelle(
-                                                        key = "slot" + slot.id,
-                                                        anker = { slotAnker(flaeche, plan.spalten, plan.reihen, tisch, slot.slot, state.blickrichtung) },
-                                                        start = { Drag.Schueler(sitzender, it) },
+                                                        key = "slot" + slot.id + (auswahl.size > 1 && tisch.id in auswahl),
+                                                        anker = {
+                                                            if (auswahl.size > 1 && tisch.id in auswahl) tischAnker(flaeche, plan.spalten, plan.reihen, tisch, state.blickrichtung)
+                                                            else slotAnker(flaeche, plan.spalten, plan.reihen, tisch, slot.slot, state.blickrichtung)
+                                                        },
+                                                        // Teil einer Mehrfachauswahl: die Gruppe ziehen, nicht das Kind
+                                                        start = { if (auswahl.size > 1 && tisch.id in auswahl) Drag.Tisch(tisch, it) else Drag.Schueler(sitzender, it) },
                                                         onDrag = { drag = it },
                                                         onDrop = { drag = null; ablegen(it) },
                                                     )
@@ -415,7 +457,15 @@ private fun SitzplanInhalt(
                             }
                         }
                     }
-                    if (gewaehlt != null && !state.gesperrt) {
+                    if (auswahl.size > 1 && !state.gesperrt) {
+                        MehrfachWerkzeuge(
+                            anzahl = auswahl.size,
+                            onDrehen = { aktionen.drehenMehrere(auswahl.toSet(), it) },
+                            onAusrichten = { aktionen.ausrichten(auswahl, it) },
+                            onLoeschen = { auswahl.forEach(aktionen.tischLoeschen); auswahl = emptyList() },
+                            onAufheben = { auswahl = emptyList() },
+                        )
+                    } else if (gewaehlt != null && !state.gesperrt) {
                         TischWerkzeuge(
                             tisch = gewaehlt,
                             sitzende = best.plaetzeVon(gewaehlt.id).count { it.schuelerId != null },
@@ -425,14 +475,14 @@ private fun SitzplanInhalt(
                             onBreite = { aktionen.breiteAendern(gewaehlt.id, it) },
                             onBeschriften = { beschriftenDialog = true },
                             onAlleEntfernen = { best.plaetzeVon(gewaehlt.id).mapNotNull { it.schuelerId }.forEach(aktionen.entfernen) },
-                            onLoeschen = { aktionen.tischLoeschen(gewaehlt.id); ausgewaehlterTisch = null },
+                            onLoeschen = { aktionen.tischLoeschen(gewaehlt.id); auswahl = emptyList() },
                         )
                     }
                     if (!state.gesperrt) UnplatziertLeiste(
                         schueler = state.unplatziert,
                         ausgewaehlt = ausgewaehlterSchueler,
                         fotoStore = fotoStore,
-                        onTipp = { ausgewaehlterSchueler = if (ausgewaehlterSchueler == it.id) null else it.id; ausgewaehlterTisch = null },
+                        onTipp = { ausgewaehlterSchueler = if (ausgewaehlterSchueler == it.id) null else it.id; auswahl = emptyList() },
                         onDrag = { drag = it },
                         onDrop = { drag = null; ablegen(it) },
                         modifier = Modifier.onGloballyPositioned { leiste = it.boundsInRoot() },
@@ -467,6 +517,18 @@ private fun SitzplanInhalt(
             plan = plan.name, spalten = plan.spalten, reihen = plan.reihen, einrasten = plan.einrasten,
             onAbbrechen = { bearbeitenDialog = false },
             onOk = { n, s, r, e -> bearbeitenDialog = false; aktionen.planAendern(n, s, r, e) },
+        )
+    }
+    if (kopierenDialog && plan != null) {
+        KopierenDialog(vorschlag = plan.name + " (Kopie)", onAbbrechen = { kopierenDialog = false }, onOk = { n, mit -> kopierenDialog = false; aktionen.kopieren(n, mit) })
+    }
+    if (mischenFrage) {
+        BestaetigenDialog(
+            titel = stringResource(R.string.sitzplan_mischen),
+            text = stringResource(R.string.sitzplan_mischen_frage),
+            bestaetigenText = stringResource(R.string.sitzplan_mischen_ja),
+            onBestaetigen = { mischenFrage = false; aktionen.mischenErzwingen() },
+            onAbbrechen = { mischenFrage = false },
         )
     }
     val zuBeschriften = best.tisch(ausgewaehlterTisch ?: -1)
@@ -569,6 +631,52 @@ private fun TischWerkzeuge(
         }
         IconButton(onClick = onLoeschen) { Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.sitzplan_platz_loeschen)) }
     }
+}
+
+@Composable
+private fun MehrfachWerkzeuge(
+    anzahl: Int,
+    onDrehen: (Float) -> Unit,
+    onAusrichten: (SitzplanLogik.Ausrichtung) -> Unit,
+    onLoeschen: () -> Unit,
+    onAufheben: () -> Unit,
+) {
+    Row(
+        Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceContainerHigh).horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp, vertical = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(stringResource(R.string.sitzplan_mehrere, anzahl), style = MaterialTheme.typography.labelMedium)
+        IconButton(onClick = { onDrehen(-15f) }) { Icon(Icons.Default.RotateLeft, contentDescription = stringResource(R.string.sitzplan_drehen_links)) }
+        IconButton(onClick = { onDrehen(15f) }) { Icon(Icons.Default.RotateRight, contentDescription = stringResource(R.string.sitzplan_drehen_rechts)) }
+        TextButton(onClick = { onAusrichten(SitzplanLogik.Ausrichtung.GLEICHE_ZEILE) }, contentPadding = PaddingValues(6.dp)) { Text(stringResource(R.string.ausrichten_zeile)) }
+        TextButton(onClick = { onAusrichten(SitzplanLogik.Ausrichtung.GLEICHE_SPALTE) }, contentPadding = PaddingValues(6.dp)) { Text(stringResource(R.string.ausrichten_spalte)) }
+        TextButton(onClick = { onAusrichten(SitzplanLogik.Ausrichtung.GLEICHE_DREHUNG) }, contentPadding = PaddingValues(6.dp)) { Text(stringResource(R.string.ausrichten_drehung)) }
+        if (anzahl >= 3) TextButton(onClick = { onAusrichten(SitzplanLogik.Ausrichtung.GLEICHER_ABSTAND) }, contentPadding = PaddingValues(6.dp)) { Text(stringResource(R.string.ausrichten_abstand)) }
+        IconButton(onClick = onLoeschen) { Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.sitzplan_platz_loeschen)) }
+        TextButton(onClick = onAufheben, contentPadding = PaddingValues(6.dp)) { Text(stringResource(R.string.auswahl_aufheben)) }
+    }
+}
+
+@Composable
+private fun KopierenDialog(vorschlag: String, onAbbrechen: () -> Unit, onOk: (String, Boolean) -> Unit) {
+    var name by rememberSaveable { mutableStateOf(vorschlag) }
+    var mit by rememberSaveable { mutableStateOf(true) }
+    AlertDialog(
+        onDismissRequest = onAbbrechen,
+        title = { Text(stringResource(R.string.sitzplan_kopieren)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text(stringResource(R.string.sitzplan_name)) }, singleLine = true)
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.sitzplan_kopieren_mit_schuelern), modifier = Modifier.weight(1f))
+                    Switch(checked = mit, onCheckedChange = { mit = it })
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = { onOk(name, mit) }) { Text(stringResource(R.string.anlegen)) } },
+        dismissButton = { TextButton(onClick = onAbbrechen) { Text(stringResource(R.string.abbrechen)) } },
+    )
 }
 
 @Composable

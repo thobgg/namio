@@ -213,3 +213,40 @@ class RasterEinzelTest {
         assertEquals(ids, b.plaetze.map { it.schuelerId })
     }
 }
+
+
+class MehrfachTest {
+    private val S = 12; private val R = 9
+    private fun t(id: Long, x: Float, y: Float, d: Float = 0f) = Tisch(id, 1, x, y, d, 1, null, 1f)
+    private fun b(vararg ts: Tisch) = Bestuhlung(ts.toList(), ts.map { Sitzplatz(it.id * 10, 1, it.id, 0, it.id) })
+
+    @Test
+    fun `verschieben und drehen mehrerer`() {
+        val start = b(t(1, 0.2f, 0.2f), t(2, 0.4f, 0.2f), t(3, 0.8f, 0.8f))
+        val v = SitzplanLogik.verschiebeMehrere(start, setOf(1, 2), 0.1f, 0.05f, S, R, einrasten = false)
+        assertEquals(0.3f, v.tisch(1)!!.x, 1e-5f); assertEquals(0.5f, v.tisch(2)!!.x, 1e-5f); assertEquals(0.8f, v.tisch(3)!!.x, 1e-5f)
+        val d = SitzplanLogik.drehenMehrere(start, setOf(1, 3), 45f)
+        assertEquals(45f, d.tisch(1)!!.drehung); assertEquals(0f, d.tisch(2)!!.drehung); assertEquals(45f, d.tisch(3)!!.drehung)
+    }
+
+    @Test
+    fun `ausrichten an ankertisch`() {
+        val start = b(t(1, 0.2f, 0.3f, 30f), t(2, 0.5f, 0.35f, 0f), t(3, 0.9f, 0.25f, 90f))
+        val zeile = SitzplanLogik.ausrichten(start, listOf(1, 2, 3), SitzplanLogik.Ausrichtung.GLEICHE_ZEILE)
+        assertTrue(zeile.tische.all { it.y == 0.3f })
+        val dreh = SitzplanLogik.ausrichten(start, listOf(2, 1, 3), SitzplanLogik.Ausrichtung.GLEICHE_DREHUNG)
+        assertTrue(dreh.tische.all { it.drehung == 0f })
+        val abstand = SitzplanLogik.ausrichten(start, listOf(1, 2, 3), SitzplanLogik.Ausrichtung.GLEICHER_ABSTAND)
+        assertEquals(0.55f, abstand.tisch(2)!!.x, 1e-5f)
+    }
+
+    @Test
+    fun `kopie mit und ohne schueler`() {
+        val start = b(t(1, 0.2f, 0.3f, 30f), t(2, 0.5f, 0.35f))
+        val mit = SitzplanLogik.kopiereFuer(start, 99, mitSchuelern = true)
+        assertEquals(2, mit.tische.size); assertTrue(mit.tische.all { it.sitzplanId == 99L && it.id < 0 })
+        assertEquals(listOf(1L, 2L), mit.plaetze.map { it.schuelerId })
+        val ohne = SitzplanLogik.kopiereFuer(start, 99, mitSchuelern = false)
+        assertTrue(ohne.plaetze.all { it.schuelerId == null })
+    }
+}

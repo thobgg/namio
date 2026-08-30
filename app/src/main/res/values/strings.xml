@@ -120,7 +120,7 @@
     <string name="sitzplan_tafel">Tafel</string>
     <string name="sitzplan_blickrichtung">Blickrichtung wechseln</string>
     <string name="sitzplan_mischen">Sitzordnung mischen</string>
-    <string name="sitzplan_hinweis">Antippen wählt aus, Ziehen verschiebt (Schüler oder ganzen Tisch). Freie Fläche antippen: neuer Tisch der gewählten Art.</string>
+    <string name="sitzplan_hinweis">Kind antippen und zweites antippen: tauschen. Tisch antippen (bei belegtem Platz lange drücken): markieren, mehrere möglich. Ziehen verschiebt. Freie Fläche: neuer Tisch.</string>
     <string name="sitzplan_hinweis_gewaehlt">Tisch ausgewählt: drehen, Plätze ändern, beschriften oder löschen.</string>
     <string name="sitzplan_hinweis_platz">Jetzt den Platz oder eine freie Stelle antippen.</string>
     <string name="sitzplan_drehen_links">15° nach links drehen</string>
@@ -155,6 +155,17 @@
     <string name="tischart_doppel">Doppel</string>
     <string name="tischart_dreier">Dreier</string>
     <string name="sitzplan_duplizieren">Tisch duplizieren</string>
+    <string name="sitzplan_kopieren">Plan kopieren</string>
+    <string name="sitzplan_kopieren_mit_schuelern">Schüler mitnehmen</string>
+    <string name="sitzplan_mischen_frage">Der Plan ist gesperrt. Trotzdem die Sitzordnung zufällig neu mischen? (Rückgängig ist danach im Bearbeitungsmodus möglich.)</string>
+    <string name="sitzplan_mischen_ja">Mischen</string>
+    <string name="sitzplan_mehrere">%1$d Tische</string>
+    <string name="sitzplan_hinweis_mehrere">Mehrere Tische markiert: gemeinsam ziehen, drehen (Buttons oder Zwei-Finger-Drehung) oder ausrichten.</string>
+    <string name="ausrichten_zeile">Zeile</string>
+    <string name="ausrichten_spalte">Spalte</string>
+    <string name="ausrichten_drehung">Drehung</string>
+    <string name="ausrichten_abstand">Abstand</string>
+    <string name="auswahl_aufheben">Auswahl aufheben</string>
     <string name="sitzplan_platz_loeschen">Tisch löschen</string>
     <string name="sitzplan_unplatziert">Noch ohne Platz: %1$d</string>
     <string name="sitzplan_alle_platziert">Alle sitzen. Hierher ziehen, um jemanden vom Plan zu nehmen.</string>
