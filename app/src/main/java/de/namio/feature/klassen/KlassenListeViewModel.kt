@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import de.namio.core.model.KlasseUebersicht
+import de.namio.core.repository.DemoDaten
 import de.namio.core.repository.KlassenRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -20,7 +21,12 @@ data class KlassenListeUiState(
 @HiltViewModel
 class KlassenListeViewModel @Inject constructor(
     private val repository: KlassenRepository,
+    demoDaten: DemoDaten,
 ) : ViewModel() {
+
+    init {
+        viewModelScope.launch { runCatching { demoDaten.anlegenFallsErsterStart() } }
+    }
 
     val uiState: StateFlow<KlassenListeUiState> = repository.observeUebersicht()
         .map { KlassenListeUiState(klassen = it, laedt = false) }
