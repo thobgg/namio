@@ -109,7 +109,7 @@
     <string name="sitzplan_tafel">Tafel</string>
     <string name="sitzplan_blickrichtung">Blickrichtung wechseln</string>
     <string name="sitzplan_mischen">Sitzordnung mischen</string>
-    <string name="sitzplan_hinweis">Tisch antippen zum Auswählen, lange drücken und ziehen zum Verschieben (Schüler oder ganzer Tisch). Freie Fläche antippen: neuer Doppeltisch.</string>
+    <string name="sitzplan_hinweis">Antippen wählt aus, Ziehen verschiebt (Schüler oder ganzen Tisch). Freie Fläche antippen: neuer Doppeltisch.</string>
     <string name="sitzplan_hinweis_gewaehlt">Tisch ausgewählt: drehen, Plätze ändern, beschriften oder löschen.</string>
     <string name="sitzplan_hinweis_platz">Jetzt den Platz oder eine freie Stelle antippen.</string>
     <string name="sitzplan_drehen_links">15° nach links drehen</string>
@@ -128,6 +128,13 @@
     <string name="moebel_tuer">Tür</string>
     <string name="sitzplan_vergroessern">Vergrößern</string>
     <string name="sitzplan_verkleinern">Verkleinern</string>
+    <string name="sitzplan_sperren">Änderungen sperren</string>
+    <string name="sitzplan_entsperren">Bearbeiten</string>
+    <string name="sitzplan_rueckgaengig">Rückgängig</string>
+    <string name="sitzplan_auslosen">Zufällige Person</string>
+    <string name="sitzplan_ausgelost">%1$s</string>
+    <string name="sitzplan_nochmal">Nochmal</string>
+    <string name="sitzplan_hinweis_gesperrt">Gesperrt – zum Bearbeiten das Schloss antippen. Würfel: zufällige Person.</string>
     <string name="sitzplan_platz_loeschen">Tisch löschen</string>
     <string name="sitzplan_unplatziert">Noch ohne Platz: %1$d</string>
     <string name="sitzplan_alle_platziert">Alle sitzen. Hierher ziehen, um jemanden vom Plan zu nehmen.</string>

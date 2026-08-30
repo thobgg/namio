@@ -109,7 +109,7 @@
     <string name="sitzplan_tafel">Board</string>
     <string name="sitzplan_blickrichtung">Switch viewing direction</string>
     <string name="sitzplan_mischen">Shuffle seating</string>
-    <string name="sitzplan_hinweis">Tap a desk to select it, long-press and drag to move (a student or the whole desk). Tap free space for a new paired desk.</string>
+    <string name="sitzplan_hinweis">Tap to select, drag to move (a student or the whole desk). Tap free space for a new paired desk.</string>
     <string name="sitzplan_hinweis_gewaehlt">Desk selected: rotate, change seats, label or delete.</string>
     <string name="sitzplan_hinweis_platz">Now tap a seat or a free spot.</string>
     <string name="sitzplan_drehen_links">Rotate 15° left</string>
@@ -128,6 +128,13 @@
     <string name="moebel_tuer">Door</string>
     <string name="sitzplan_vergroessern">Zoom in</string>
     <string name="sitzplan_verkleinern">Zoom out</string>
+    <string name="sitzplan_sperren">Lock changes</string>
+    <string name="sitzplan_entsperren">Edit</string>
+    <string name="sitzplan_rueckgaengig">Undo</string>
+    <string name="sitzplan_auslosen">Random person</string>
+    <string name="sitzplan_ausgelost">%1$s</string>
+    <string name="sitzplan_nochmal">Again</string>
+    <string name="sitzplan_hinweis_gesperrt">Locked – tap the lock to edit. Dice: random person.</string>
     <string name="sitzplan_platz_loeschen">Delete desk</string>
     <string name="sitzplan_unplatziert">Not seated yet: %1$d</string>
     <string name="sitzplan_alle_platziert">Everyone is seated. Drag here to remove someone from the plan.</string>

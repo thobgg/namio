@@ -35,6 +35,11 @@ data class SitzplanUiState(
     val schueler: List<Schueler> = emptyList(),
     val blickrichtung: Blickrichtung = Blickrichtung.VON_VORN,
     val laedt: Boolean = true,
+    /** Gesperrt: nur ansehen, zoomen, auslosen. */
+    val gesperrt: Boolean = true,
+    val kannRueckgaengig: Boolean = false,
+    /** Ausgeloster Schüler, dessen Platz blinkt. */
+    val ausgelost: Long? = null,
 ) {
     val schuelerProId: Map<Long, Schueler> get() = schueler.associateBy { it.id }
     val unplatziert: List<Schueler>
@@ -56,6 +61,10 @@ class SitzplanViewModel @Inject constructor(
 
     private val klasseId = savedStateHandle.toRoute<Route.Sitzplan>().klasseId
     private val gewaehltePlanId = MutableStateFlow<Long?>(null)
+    private val gesperrt = MutableStateFlow<Boolean?>(null)
+    private val ausgelost = MutableStateFlow<Long?>(null)
+    /** Undo-Stapel je Plan: frühere Bestuhlungen, jüngste zuletzt. */
+    private val verlauf = MutableStateFlow<Map<Long, List<Bestuhlung>>>(emptyMap())
 
     private val aktiverPlan = combine(sitzplanRepository.observePlaene(klasseId), gewaehltePlanId) { plaene, id ->
         plaene.firstOrNull { it.id == id } ?: plaene.firstOrNull()
@@ -69,12 +78,67 @@ class SitzplanViewModel @Inject constructor(
         sitzplanRepository.observePlaene(klasseId),
         aktiverPlan,
         bestuhlung,
-        combine(schuelerRepository.observeFuerKlasse(klasseId), einstellungen.blickrichtung) { s, b -> s to b },
-    ) { klasse, plaene, aktiv, best, (schueler, blick) ->
-        SitzplanUiState(klasse, plaene, aktiv, best, schueler, blick, laedt = false)
+        combine(
+            schuelerRepository.observeFuerKlasse(klasseId),
+            einstellungen.blickrichtung,
+            gesperrt,
+            ausgelost,
+            verlauf,
+        ) { s, b, g, z, v -> Extra(s, b, g, z, v) },
+    ) { klasse, plaene, aktiv, best, extra ->
+        // Standard: bestehende Pläne mit Tischen starten gesperrt, leere Pläne offen.
+        val sperre = extra.gesperrt ?: best.tische.isNotEmpty()
+        SitzplanUiState(
+            klasse, plaene, aktiv, best, extra.schueler, extra.blick, laedt = false,
+            gesperrt = sperre,
+            kannRueckgaengig = aktiv != null && !extra.verlauf[aktiv.id].isNullOrEmpty(),
+            ausgelost = extra.ausgelost,
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SitzplanUiState())
 
-    private inline fun mitPlan(block: (Long) -> Unit) { uiState.value.aktiv?.let { block(it.id) } }
+    private data class Extra(
+        val schueler: List<Schueler>,
+        val blick: Blickrichtung,
+        val gesperrt: Boolean?,
+        val ausgelost: Long?,
+        val verlauf: Map<Long, List<Bestuhlung>>,
+    )
+
+    fun sperreUmschalten() { gesperrt.value = !uiState.value.gesperrt }
+
+    /** Lost einen sitzenden Schüler aus (nie zweimal hintereinander denselben, wenn möglich). */
+    fun auslosen() {
+        val sitzend = uiState.value.bestuhlung.plaetze.mapNotNull { it.schuelerId }
+        if (sitzend.isEmpty()) return
+        val kandidaten = sitzend.filter { it != ausgelost.value }.ifEmpty { sitzend }
+        ausgelost.value = kandidaten.random()
+    }
+
+    fun auslosungBeenden() { ausgelost.value = null }
+
+    fun rueckgaengig() {
+        val plan = uiState.value.aktiv ?: return
+        val stapel = verlauf.value[plan.id].orEmpty()
+        val letzte = stapel.lastOrNull() ?: return
+        verlauf.value = verlauf.value + (plan.id to stapel.dropLast(1))
+        viewModelScope.launch { sitzplanRepository.setzeBestuhlung(plan.id, letzte) }
+    }
+
+    /** Merkt sich den aktuellen Stand, bevor eine Änderung geschrieben wird. */
+    private fun merken() {
+        val plan = uiState.value.aktiv ?: return
+        val stapel = verlauf.value[plan.id].orEmpty() + uiState.value.bestuhlung
+        verlauf.value = verlauf.value + (plan.id to stapel.takeLast(MAX_VERLAUF))
+    }
+
+    private inline fun mitPlanImmer(block: (Long) -> Unit) { uiState.value.aktiv?.let { block(it.id) } }
+
+    private inline fun mitPlan(block: (Long) -> Unit) {
+        val plan = uiState.value.aktiv ?: return
+        if (uiState.value.gesperrt) return
+        merken()
+        block(plan.id)
+    }
 
     fun planWaehlen(id: Long) { gewaehltePlanId.value = id }
 
@@ -85,9 +149,9 @@ class SitzplanViewModel @Inject constructor(
         }
     }
 
-    fun planAendern(name: String, spalten: Int, reihen: Int, einrasten: Boolean) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.aendern(id, name, spalten, reihen, einrasten) } }
-    fun planLoeschen() = mitPlan { id -> viewModelScope.launch { sitzplanRepository.loeschen(id); gewaehltePlanId.value = null } }
-    fun alsStandard() = mitPlan { id -> viewModelScope.launch { sitzplanRepository.alsStandard(id) } }
+    fun planAendern(name: String, spalten: Int, reihen: Int, einrasten: Boolean) = mitPlanImmer { id -> viewModelScope.launch { sitzplanRepository.aendern(id, name, spalten, reihen, einrasten) } }
+    fun planLoeschen() = mitPlanImmer { id -> viewModelScope.launch { sitzplanRepository.loeschen(id); gewaehltePlanId.value = null } }
+    fun alsStandard() = mitPlanImmer { id -> viewModelScope.launch { sitzplanRepository.alsStandard(id) } }
     fun ablegen(schuelerId: Long, x: Float, y: Float) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.ablegen(id, schuelerId, x, y) } }
     fun tischHinzufuegen(x: Float, y: Float, plaetze: Int) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.tischHinzufuegen(id, x, y, plaetze, null) } }
     fun verschieben(tischId: Long, x: Float, y: Float) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.verschieben(id, tischId, x, y) } }
@@ -97,6 +161,10 @@ class SitzplanViewModel @Inject constructor(
     fun entfernen(schuelerId: Long) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.entfernen(id, schuelerId) } }
     fun tischLoeschen(tischId: Long) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.tischLoeschen(id, tischId) } }
     fun mischen() = mitPlan { id -> viewModelScope.launch { sitzplanRepository.mischen(id) } }
+
+    private companion object {
+        const val MAX_VERLAUF = 30
+    }
 
     fun blickrichtungUmschalten() {
         val neu = if (uiState.value.blickrichtung == Blickrichtung.VON_VORN) Blickrichtung.VON_HINTEN else Blickrichtung.VON_VORN

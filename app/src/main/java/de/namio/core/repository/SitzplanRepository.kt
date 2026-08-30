@@ -94,6 +94,11 @@ class SitzplanRepository @Inject constructor(
     suspend fun tischLoeschen(planId: Long, tischId: Long) = schreibe(planId) { _, b -> SitzplanLogik.tischLoeschen(b, tischId) }
     suspend fun mischen(planId: Long) = schreibe(planId) { _, b -> SitzplanLogik.mischen(b) }
 
+    /** Setzt die Bestuhlung komplett – für Rückgängig. */
+    suspend fun setzeBestuhlung(planId: Long, bestuhlung: Bestuhlung) {
+        db.withTransaction { schreibeBestuhlung(planId, bestuhlung) }
+    }
+
     private suspend fun lies(planId: Long) = Bestuhlung(
         tischDao.fuerPlan(planId).map { it.zuModell() },
         sitzplatzDao.fuerPlan(planId).map { it.zuModell() },

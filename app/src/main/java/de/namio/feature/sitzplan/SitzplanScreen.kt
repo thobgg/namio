@@ -2,7 +2,18 @@ package de.namio.feature.sitzplan
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.filled.Casino
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
@@ -120,6 +131,10 @@ fun SitzplanScreen(
             tischLoeschen = viewModel::tischLoeschen,
             mischen = viewModel::mischen,
             blickrichtung = viewModel::blickrichtungUmschalten,
+            sperre = viewModel::sperreUmschalten,
+            rueckgaengig = viewModel::rueckgaengig,
+            auslosen = viewModel::auslosen,
+            auslosungBeenden = viewModel::auslosungBeenden,
         ),
     )
 }
@@ -141,6 +156,10 @@ data class SitzplanAktionen(
     val tischLoeschen: (Long) -> Unit,
     val mischen: () -> Unit,
     val blickrichtung: () -> Unit,
+    val sperre: () -> Unit,
+    val rueckgaengig: () -> Unit,
+    val auslosen: () -> Unit,
+    val auslosungBeenden: () -> Unit,
 )
 
 /** Laufender Drag: ein Schüler (aus Leiste oder Slot) oder ein ganzer Tisch. */
@@ -169,6 +188,12 @@ private fun SitzplanInhalt(
     var zoom by rememberSaveable { mutableStateOf(1f) }
     val zoomGeste = rememberTransformableState { faktor, _, _ -> zoom = (zoom * faktor).coerceIn(ZOOM_MIN, ZOOM_MAX) }
     var flaeche by remember { mutableStateOf<Rect?>(null) }
+    val blinken = rememberInfiniteTransition(label = "blinken")
+    val blinkPhase by blinken.animateFloat(0f, 1f, infiniteRepeatable(tween(500), RepeatMode.Reverse), label = "blinkPhase")
+    val blinkAn = state.ausgelost != null && blinkPhase > 0.5f
+    LaunchedEffect(state.ausgelost) {
+        if (state.ausgelost != null) { delay(10_000); aktionen.auslosungBeenden() }
+    }
     var leiste by remember { mutableStateOf<Rect?>(null) }
     var wurzel by remember { mutableStateOf(Offset.Zero) }
     val plan = state.aktiv
@@ -201,8 +226,21 @@ private fun SitzplanInhalt(
                 },
                 actions = {
                     if (plan != null) {
+                        IconButton(onClick = aktionen.auslosen) { Icon(Icons.Default.Casino, contentDescription = stringResource(R.string.sitzplan_auslosen)) }
+                        if (!state.gesperrt) {
+                            IconButton(onClick = aktionen.rueckgaengig, enabled = state.kannRueckgaengig) { Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = stringResource(R.string.sitzplan_rueckgaengig)) }
+                        }
+                        IconButton(onClick = { aktionen.sperre(); ausgewaehlterTisch = null; ausgewaehlterSchueler = null }) {
+                            Icon(
+                                if (state.gesperrt) Icons.Default.Lock else Icons.Default.LockOpen,
+                                contentDescription = stringResource(if (state.gesperrt) R.string.sitzplan_entsperren else R.string.sitzplan_sperren),
+                                tint = if (state.gesperrt) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.primary,
+                            )
+                        }
                         IconButton(onClick = aktionen.blickrichtung) { Icon(Icons.Default.Cameraswitch, contentDescription = stringResource(R.string.sitzplan_blickrichtung)) }
-                        IconButton(onClick = aktionen.mischen) { Icon(Icons.Default.Shuffle, contentDescription = stringResource(R.string.sitzplan_mischen)) }
+                        if (!state.gesperrt) {
+                            IconButton(onClick = aktionen.mischen) { Icon(Icons.Default.Shuffle, contentDescription = stringResource(R.string.sitzplan_mischen)) }
+                        }
                         Box {
                             IconButton(onClick = { menueOffen = true }) { Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.mehr)) }
                             DropdownMenu(expanded = menueOffen, onDismissRequest = { menueOffen = false }) {
@@ -240,10 +278,23 @@ private fun SitzplanInhalt(
                             }
                         }
                     }
+                    val ausgeloster = state.ausgelost?.let(state.schuelerProId::get)
+                    if (ausgeloster != null) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.tertiaryContainer).clickable { aktionen.auslosungBeenden() }.padding(horizontal = 16.dp, vertical = 8.dp),
+                        ) {
+                            Icon(Icons.Default.Casino, contentDescription = null, tint = MaterialTheme.colorScheme.onTertiaryContainer)
+                            Spacer(Modifier.size(10.dp))
+                            Text(stringResource(R.string.sitzplan_ausgelost, ausgeloster.vollerName), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onTertiaryContainer, modifier = Modifier.weight(1f))
+                            TextButton(onClick = aktionen.auslosen) { Text(stringResource(R.string.sitzplan_nochmal)) }
+                        }
+                    }
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp)) {
                         Text(
                             stringResource(
                                 when {
+                                    state.gesperrt -> R.string.sitzplan_hinweis_gesperrt
                                     ausgewaehlterSchueler != null -> R.string.sitzplan_hinweis_platz
                                     gewaehlt != null -> R.string.sitzplan_hinweis_gewaehlt
                                     else -> R.string.sitzplan_hinweis
@@ -269,11 +320,13 @@ private fun SitzplanInhalt(
                                     zoom = zoom,
                                     basisBreite = (viewport - 16.dp).coerceAtMost(BASIS_BREITE),
                                     modifier = Modifier.padding(8.dp),
-                                    rasterZeigen = plan.einrasten,
+                                    rasterZeigen = plan.einrasten && !state.gesperrt,
                                     tischMarkierung = { it.id == ausgewaehlterTisch },
+                                    slotMarkierung = { slot -> if (blinkAn && slot.schuelerId != null && slot.schuelerId == state.ausgelost) PlatzMarkierung.RICHTIG else PlatzMarkierung.KEINE },
                                     flaechenModifier = Modifier
                                         .onGloballyPositioned { flaeche = it.boundsInRoot() }
-                                        .pointerInput(plan.id, ausgewaehlterSchueler, ausgewaehlterTisch, state.blickrichtung) {
+                                        .pointerInput(plan.id, ausgewaehlterSchueler, ausgewaehlterTisch, state.blickrichtung, state.gesperrt) {
+                                            if (state.gesperrt) return@pointerInput
                                             detectTapGestures { lokal ->
                                                 val f = flaeche ?: return@detectTapGestures
                                                 val raum = raumKoordinate(f.topLeft + lokal) ?: return@detectTapGestures
@@ -286,7 +339,7 @@ private fun SitzplanInhalt(
                                             }
                                         },
                                     tischModifier = { tisch ->
-                                        Modifier
+                                        if (state.gesperrt) Modifier else Modifier
                                             .pointerInput(tisch.id, ausgewaehlterSchueler) {
                                                 detectTapGestures {
                                                     if (ausgewaehlterSchueler == null) ausgewaehlterTisch = if (ausgewaehlterTisch == tisch.id) null else tisch.id
@@ -302,7 +355,7 @@ private fun SitzplanInhalt(
                                     },
                                     slotModifier = { tisch, slot ->
                                         val sitzender = slot.schuelerId?.let(state.schuelerProId::get)
-                                        Modifier
+                                        if (state.gesperrt) Modifier else Modifier
                                             .pointerInput(slot.id, ausgewaehlterSchueler) {
                                                 detectTapGestures {
                                                     val s = ausgewaehlterSchueler
@@ -333,7 +386,7 @@ private fun SitzplanInhalt(
                             }
                         }
                     }
-                    if (gewaehlt != null) {
+                    if (gewaehlt != null && !state.gesperrt) {
                         TischWerkzeuge(
                             tisch = gewaehlt,
                             sitzende = best.plaetzeVon(gewaehlt.id).count { it.schuelerId != null },
@@ -344,7 +397,7 @@ private fun SitzplanInhalt(
                             onLoeschen = { aktionen.tischLoeschen(gewaehlt.id); ausgewaehlterTisch = null },
                         )
                     }
-                    UnplatziertLeiste(
+                    if (!state.gesperrt) UnplatziertLeiste(
                         schueler = state.unplatziert,
                         ausgewaehlt = ausgewaehlterSchueler,
                         fotoStore = fotoStore,
@@ -437,7 +490,7 @@ private fun Modifier.dragQuelle(
         is Drag.Tisch -> l.copy(position = pos)
         null -> null
     }
-    detectDragGesturesAfterLongPress(
+    detectDragGestures(
         onDragStart = { lokal -> aktuell = anker() + lokal; laufend = start(aktuell); laufend?.let(onDrag) },
         onDrag = { change, delta -> change.consume(); aktuell += delta; laufend = mit(aktuell); laufend?.let(onDrag) },
         onDragEnd = { laufend?.let(onDrop) },
