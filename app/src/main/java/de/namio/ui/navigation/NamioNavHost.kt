@@ -12,6 +12,7 @@ import de.namio.feature.schueler.FotoAufnahmeScreen
 import de.namio.feature.schueler.SchuelerDetailScreen
 import de.namio.feature.sitzplan.SitzplanScreen
 import de.namio.feature.statistik.StatistikScreen
+import de.namio.feature.csvimport.CsvImportScreen
 import kotlinx.serialization.Serializable
 
 /** Type-Safe Routen. */
@@ -23,6 +24,7 @@ sealed interface Route {
     @Serializable data class QuizAuswahl(val klasseId: Long) : Route
     @Serializable data class Sitzplan(val klasseId: Long) : Route
     @Serializable data class Statistik(val klasseId: Long) : Route
+    @Serializable data class CsvImport(val klasseId: Long) : Route
     /** [modus] ist der Name des [de.namio.core.model.QuizModus]. */
     @Serializable data class QuizRunde(val klasseId: Long, val modus: String) : Route
 }
@@ -43,6 +45,7 @@ fun NamioNavHost() {
                 onQuiz = { navController.navigate(Route.QuizAuswahl(it)) },
                 onSitzplan = { navController.navigate(Route.Sitzplan(it)) },
                 onStatistik = { navController.navigate(Route.Statistik(it)) },
+                onCsvImport = { navController.navigate(Route.CsvImport(it)) },
             )
         }
         composable<Route.SchuelerDetail> {
@@ -53,6 +56,9 @@ fun NamioNavHost() {
         }
         composable<Route.FotoAufnahme> {
             FotoAufnahmeScreen(onZurueck = { navController.popBackStack() })
+        }
+        composable<Route.CsvImport> {
+            CsvImportScreen(onZurueck = { navController.popBackStack() })
         }
         composable<Route.Statistik> {
             StatistikScreen(onZurueck = { navController.popBackStack() })

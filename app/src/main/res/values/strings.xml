@@ -24,7 +24,7 @@
     <string name="klasse_loeschen_frage">„%1$s“ mit allen Schülern und Fotos endgültig löschen?</string>
 
     <!-- Klassendetail -->
-    <string name="schueler_leer">Noch keine Schüler. Füge mit dem Plus den ersten hinzu.</string>
+    <string name="schueler_leer">Noch keine Schüler. Füge mit dem Plus den ersten hinzu – oder importiere die Klassenliste als CSV (Symbol oben).</string>
     <string name="schueler_hinzufuegen">Schüler hinzufügen</string>
     <string name="schueler_vorname">Vorname</string>
     <string name="schueler_nachname">Nachname</string>
@@ -173,4 +173,29 @@
     <string name="statistik_verwechslungen">Häufigste Verwechslungen</string>
     <string name="statistik_keine_verwechslungen">Noch keine Verwechslungen – gut so.</string>
     <string name="statistik_mal">%1$d-mal verwechselt</string>
+
+    <!-- CSV-Import -->
+    <string name="csv_titel">CSV-Import</string>
+    <string name="csv_hinweis">Klassenliste aus Untis oder Excel als CSV-Datei wählen. Trennzeichen und Zeichensatz werden erkannt; die Spaltenzuordnung bestätigst du vor dem Import.</string>
+    <string name="csv_datei_waehlen">CSV-Datei wählen</string>
+    <string name="csv_fehler">Die Datei konnte nicht gelesen werden oder enthält keine Zeilen.</string>
+    <string name="csv_erkannt">%1$d Zeilen erkannt · %2$s · Trennzeichen „%3$s“</string>
+    <string name="csv_zuordnung">Spalten zuordnen</string>
+    <string name="csv_kombiniert">„Nachname, Vorname“ in einer Spalte</string>
+    <string name="csv_geschlecht_spalte">Geschlecht (m/w)</string>
+    <string name="csv_geschlecht_standard">Geschlecht, wenn nicht in der Datei:</string>
+    <string name="csv_keine_spalte">keine</string>
+    <plurals name="csv_vorschau">
+        <item quantity="one">Vorschau: %1$d Schüler</item>
+        <item quantity="other">Vorschau: %1$d Schüler</item>
+    </plurals>
+    <string name="csv_und_weitere">… und %1$d weitere</string>
+    <plurals name="csv_importieren">
+        <item quantity="one">%1$d Schüler importieren</item>
+        <item quantity="other">%1$d Schüler importieren</item>
+    </plurals>
+    <plurals name="csv_importiert">
+        <item quantity="one">%1$d Schüler importiert.</item>
+        <item quantity="other">%1$d Schüler importiert.</item>
+    </plurals>
 </resources>

@@ -24,7 +24,7 @@
     <string name="klasse_loeschen_frage">Permanently delete “%1$s” with all students and photos?</string>
 
     <!-- Class detail -->
-    <string name="schueler_leer">No students yet. Tap the plus to add the first one.</string>
+    <string name="schueler_leer">No students yet. Tap the plus to add the first one – or import the class list as CSV (icon above).</string>
     <string name="schueler_hinzufuegen">Add student</string>
     <string name="schueler_vorname">First name</string>
     <string name="schueler_nachname">Last name</string>
@@ -173,4 +173,29 @@
     <string name="statistik_verwechslungen">Most frequent mix-ups</string>
     <string name="statistik_keine_verwechslungen">No mix-ups yet – nice.</string>
     <string name="statistik_mal">mixed up %1$d times</string>
+
+    <!-- CSV import -->
+    <string name="csv_titel">CSV import</string>
+    <string name="csv_hinweis">Pick the class list from Untis or Excel as a CSV file. Delimiter and encoding are detected; you confirm the column mapping before importing.</string>
+    <string name="csv_datei_waehlen">Choose CSV file</string>
+    <string name="csv_fehler">The file could not be read or has no rows.</string>
+    <string name="csv_erkannt">%1$d rows detected · %2$s · delimiter “%3$s”</string>
+    <string name="csv_zuordnung">Map columns</string>
+    <string name="csv_kombiniert">“Last name, first name” in one column</string>
+    <string name="csv_geschlecht_spalte">Gender (m/f)</string>
+    <string name="csv_geschlecht_standard">Gender when not in the file:</string>
+    <string name="csv_keine_spalte">none</string>
+    <plurals name="csv_vorschau">
+        <item quantity="one">Preview: %1$d student</item>
+        <item quantity="other">Preview: %1$d students</item>
+    </plurals>
+    <string name="csv_und_weitere">… and %1$d more</string>
+    <plurals name="csv_importieren">
+        <item quantity="one">Import %1$d student</item>
+        <item quantity="other">Import %1$d students</item>
+    </plurals>
+    <plurals name="csv_importiert">
+        <item quantity="one">%1$d student imported.</item>
+        <item quantity="other">%1$d students imported.</item>
+    </plurals>
 </resources>

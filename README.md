@@ -35,6 +35,7 @@ Die App verarbeitet Fotos von Minderjährigen. Deshalb gelten harte Regeln, kein
 - Klassenliste mit Lernfortschritt, Schülerraster mit Fotos
 - Foto per Kamera (quadratischer Sucher mit Gesichtsrahmen), aus der Galerie oder aus 35 mitgelieferten Cartoon-Avataren
 - Vorname, Nachname, Spitzname, Notiz, Geschlecht
+- CSV-Import der Klassenliste (Untis/Excel): Trennzeichen und Zeichensatz werden erkannt, Spaltenzuordnung mit Vorschau
 - Demoklasse mit 24 Schülern beim ersten Start, jederzeit löschbar
 - Deutsch und Englisch
 
@@ -61,8 +62,8 @@ Die App verarbeitet Fotos von Minderjährigen. Deshalb gelten harte Regeln, kein
 
 ## Geplant
 
-- CSV-Import (Untis/Excel)
-- App-Sperre per Biometrie, verschlüsselter Export
+- App-Sperre per Biometrie, Einstellungen, verschlüsselter Export/Import
+- Erinnerung am Schuljahresende, Accessibility-Durchgang
 
 ## Tech-Stack
 
