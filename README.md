@@ -66,6 +66,12 @@ Die App verarbeitet Fotos von Minderjährigen. Deshalb gelten harte Regeln, kein
 - Sofortiges Feedback, Fortschrittsbalken, Ergebnis mit Fehlerliste und Wiederholungsrunde
 - Ablenker werden bewusst gewählt: erst frühere Verwechslungen, dann gleicher Anfangsbuchstabe, dann Zufall — immer gleiches Geschlecht, immer aus derselben Klasse
 
+**Sicherheit & Daten**
+- App-Sperre beim Öffnen (Fingerabdruck, Gesicht oder Geräte-PIN), standardmäßig an
+- Export/Import aller Daten als passwortgeschützte Datei (`.namio`, AES-256-GCM, Schlüssel per PBKDF2) – zum Gerätewechsel oder als Sicherung, ohne Cloud
+- „Alle Daten löschen“ in den Einstellungen, echtes Löschen inklusive Fotodateien
+- Hinweis zur rechtlichen Verantwortung beim ersten Start
+
 **Lernalgorithmus**
 - Leitner mit fünf Boxen und kurzen Intervallen (sofort · 10 min · 1 Tag · 3 Tage · 7 Tage)
 - Falsch heißt zurück auf Box 1. Ein Lernstand pro Schüler *und* Modus.
@@ -73,8 +79,8 @@ Die App verarbeitet Fotos von Minderjährigen. Deshalb gelten harte Regeln, kein
 
 ## Geplant
 
-- App-Sperre per Biometrie, Einstellungen, verschlüsselter Export/Import
 - Erinnerung am Schuljahresende, Accessibility-Durchgang
+- Sitzplan: Mehrfachauswahl, Ausrichten, Drehen per Geste, Plan kopieren
 
 ## Tech-Stack
 
