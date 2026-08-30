@@ -88,6 +88,7 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.biometric)
 
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)

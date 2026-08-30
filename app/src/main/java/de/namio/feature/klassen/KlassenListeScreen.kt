@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
@@ -54,12 +55,14 @@ import de.namio.ui.components.BestaetigenDialog
 @Composable
 fun KlassenListeScreen(
     onKlasseOeffnen: (Long) -> Unit,
+    onEinstellungen: () -> Unit,
     viewModel: KlassenListeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     KlassenListeInhalt(
         state = state,
         onKlasseOeffnen = onKlasseOeffnen,
+        onEinstellungen = onEinstellungen,
         onAnlegen = viewModel::anlegen,
         onLoeschen = viewModel::loeschen,
     )
@@ -70,6 +73,7 @@ fun KlassenListeScreen(
 private fun KlassenListeInhalt(
     state: KlassenListeUiState,
     onKlasseOeffnen: (Long) -> Unit,
+    onEinstellungen: () -> Unit,
     onAnlegen: (String, String, String) -> Unit,
     onLoeschen: (Long) -> Unit,
 ) {
@@ -77,7 +81,12 @@ private fun KlassenListeInhalt(
     var zuLoeschen by remember { mutableStateOf<KlasseUebersicht?>(null) }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text(stringResource(R.string.klassen_titel)) }) },
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.klassen_titel)) },
+                actions = { IconButton(onClick = onEinstellungen) { Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.einstellungen_titel)) } },
+            )
+        },
         floatingActionButton = {
             FloatingActionButton(onClick = { dialogOffen = true }) {
                 Icon(Icons.Default.Add, contentDescription = stringResource(R.string.klasse_anlegen))

@@ -198,4 +198,22 @@
         <item quantity="one">%1$d student imported.</item>
         <item quantity="other">%1$d students imported.</item>
     </plurals>
+
+    <!-- Settings / lock -->
+    <string name="einstellungen_titel">Settings</string>
+    <string name="einstellungen_sperre">App lock</string>
+    <string name="einstellungen_sperre_hinweis">Unlock with fingerprint, face or device PIN when opening. Without a device lock the app stays open.</string>
+    <string name="einstellungen_blickrichtung">Seating plan view</string>
+    <string name="blickrichtung_vorn">From the desk</string>
+    <string name="blickrichtung_hinten">As on paper</string>
+    <string name="einstellungen_neue_karten">New cards per round: %1$d</string>
+    <string name="einstellungen_neue_karten_hinweis">How many never-practised students join each quiz round.</string>
+    <string name="einstellungen_daten">Data</string>
+    <string name="einstellungen_export_bald">Encrypted export and import are coming.</string>
+    <string name="einstellungen_alles_loeschen">Delete all data</string>
+    <string name="einstellungen_alles_loeschen_frage">Permanently delete all classes, students, photos, progress and seating plans? This cannot be undone.</string>
+    <string name="sperre_titel">Unlock Namio</string>
+    <string name="sperre_untertitel">Student photos are protected.</string>
+    <string name="sperre_gesperrt">Namio is locked</string>
+    <string name="sperre_entsperren">Unlock</string>
 </resources>

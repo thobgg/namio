@@ -198,4 +198,22 @@
         <item quantity="one">%1$d Schüler importiert.</item>
         <item quantity="other">%1$d Schüler importiert.</item>
     </plurals>
+
+    <!-- Einstellungen / Sperre -->
+    <string name="einstellungen_titel">Einstellungen</string>
+    <string name="einstellungen_sperre">App-Sperre</string>
+    <string name="einstellungen_sperre_hinweis">Beim Öffnen per Fingerabdruck, Gesicht oder Geräte-PIN entsperren. Ohne eingerichtete Gerätesperre bleibt die App offen.</string>
+    <string name="einstellungen_blickrichtung">Sitzplan-Blickrichtung</string>
+    <string name="blickrichtung_vorn">Vom Pult aus</string>
+    <string name="blickrichtung_hinten">Wie auf Papier</string>
+    <string name="einstellungen_neue_karten">Neue Karten pro Runde: %1$d</string>
+    <string name="einstellungen_neue_karten_hinweis">Wie viele noch nie gelernte Schüler pro Quizrunde dazukommen.</string>
+    <string name="einstellungen_daten">Daten</string>
+    <string name="einstellungen_export_bald">Export und Import als verschlüsselte Datei folgen.</string>
+    <string name="einstellungen_alles_loeschen">Alle Daten löschen</string>
+    <string name="einstellungen_alles_loeschen_frage">Alle Klassen, Schüler, Fotos, Lernstände und Sitzpläne endgültig löschen? Das lässt sich nicht rückgängig machen.</string>
+    <string name="sperre_titel">Namio entsperren</string>
+    <string name="sperre_untertitel">Schülerfotos sind geschützt.</string>
+    <string name="sperre_gesperrt">Namio ist gesperrt</string>
+    <string name="sperre_entsperren">Entsperren</string>
 </resources>

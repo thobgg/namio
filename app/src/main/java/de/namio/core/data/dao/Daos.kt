@@ -37,6 +37,9 @@ interface KlasseDao {
     @Query("SELECT * FROM klasse WHERE id = :id")
     fun observe(id: Long): Flow<KlasseEntity?>
 
+    @Query("SELECT id FROM klasse")
+    suspend fun alleIds(): List<Long>
+
     @Insert
     suspend fun insert(klasse: KlasseEntity): Long
 

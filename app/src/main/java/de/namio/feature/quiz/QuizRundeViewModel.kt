@@ -16,6 +16,8 @@ import de.namio.core.model.Schueler
 import de.namio.core.model.Bestuhlung
 import de.namio.core.model.Sitzplan
 import de.namio.core.repository.SitzplanRepository
+import de.namio.core.repository.EinstellungenRepository
+import kotlinx.coroutines.flow.first
 import de.namio.core.repository.QuizRepository
 import de.namio.ui.navigation.Route
 import kotlinx.coroutines.delay
@@ -71,6 +73,7 @@ class QuizRundeViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val repository: QuizRepository,
     private val sitzplanRepository: SitzplanRepository,
+    private val einstellungen: EinstellungenRepository,
     private val clock: Clock,
 ) : ViewModel() {
 
@@ -130,7 +133,7 @@ class QuizRundeViewModel @Inject constructor(
             }
             else -> {
                 val karten = repository.lernkarten(klasseId, modus)
-                val faellig = KartenAuswahl.reihenfolge(mitFoto, karten, clock.instant())
+                val faellig = KartenAuswahl.reihenfolge(mitFoto, karten, clock.instant(), maxNeue = einstellungen.neueKartenProRunde.first())
                 // Nichts fällig: trotzdem üben lassen, mit allen Schülern in zufälliger Reihenfolge.
                 faellig.ifEmpty { mitFoto.shuffled() }
             }

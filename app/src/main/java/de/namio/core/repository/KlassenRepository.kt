@@ -47,6 +47,12 @@ class KlassenRepository @Inject constructor(
             ),
         )
 
+    /** Löscht alle Klassen samt Schülern, Lernständen, Sitzplänen und Fotodateien. */
+    suspend fun allesLoeschen() {
+        klasseDao.alleIds().forEach { loeschen(it) }
+        fotoStore.alleLoeschen()
+    }
+
     /**
      * Löscht eine Klasse endgültig – inklusive aller Fotodateien der Schüler.
      * Das CASCADE der DB räumt nur die Zeilen, die Dateien liegen außerhalb.

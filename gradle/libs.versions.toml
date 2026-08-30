@@ -21,6 +21,7 @@ junitJupiter = "5.11.3"
 turbine = "1.2.0"
 androidxJunit = "1.2.1"
 espresso = "3.6.1"
+biometric = "1.1.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -59,6 +60,7 @@ junit-platform-launcher = { group = "org.junit.platform", name = "junit-platform
 turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxJunit" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espresso" }
+androidx-biometric = { group = "androidx.biometric", name = "biometric", version.ref = "biometric" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

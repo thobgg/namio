@@ -13,11 +13,13 @@ import de.namio.feature.schueler.SchuelerDetailScreen
 import de.namio.feature.sitzplan.SitzplanScreen
 import de.namio.feature.statistik.StatistikScreen
 import de.namio.feature.csvimport.CsvImportScreen
+import de.namio.feature.einstellungen.EinstellungenScreen
 import kotlinx.serialization.Serializable
 
 /** Type-Safe Routen. */
 sealed interface Route {
     @Serializable data object KlassenListe : Route
+    @Serializable data object Einstellungen : Route
     @Serializable data class KlassenDetail(val klasseId: Long) : Route
     @Serializable data class SchuelerDetail(val schuelerId: Long) : Route
     @Serializable data class FotoAufnahme(val schuelerId: Long) : Route
@@ -36,7 +38,11 @@ fun NamioNavHost() {
         composable<Route.KlassenListe> {
             KlassenListeScreen(
                 onKlasseOeffnen = { navController.navigate(Route.KlassenDetail(it)) },
+                onEinstellungen = { navController.navigate(Route.Einstellungen) },
             )
+        }
+        composable<Route.Einstellungen> {
+            EinstellungenScreen(onZurueck = { navController.popBackStack() })
         }
         composable<Route.KlassenDetail> {
             KlassenDetailScreen(

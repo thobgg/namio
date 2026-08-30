@@ -65,6 +65,9 @@ class FotoStore @Inject constructor(@ApplicationContext private val context: Con
         withContext(Dispatchers.IO) { datei(name).delete() }
     }
 
+    /** Löscht sämtliche Fotodateien (Alles löschen). */
+    suspend fun alleLoeschen() = withContext(Dispatchers.IO) { ordner.listFiles()?.forEach { it.delete() } }
+
     /** Löscht mehrere Fotodateien. */
     suspend fun loescheAlle(namen: Collection<String>) = namen.forEach { loesche(it) }
 
