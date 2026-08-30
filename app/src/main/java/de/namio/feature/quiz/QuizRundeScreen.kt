@@ -60,6 +60,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import de.namio.feature.klassen.rememberFotoStore
 import de.namio.ui.components.INHALT_MAX_BREITE
 import de.namio.ui.components.SchuelerFoto
@@ -181,6 +187,8 @@ private fun SitzplanFrageInhalt(
     val ziel = phase.frage.ziel
     val schuelerProId = phase.frage.optionen.associateBy { it.id }
     val blickrichtung by rememberBlickrichtung()
+    var zoom by rememberSaveable { mutableStateOf(1f) }
+    val zoomGeste = rememberTransformableState { faktor, _, _ -> zoom = (zoom * faktor).coerceIn(0.5f, 3f) }
     Column(Modifier.fillMaxSize().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         LinearProgressIndicator(progress = { phase.fortschritt }, modifier = Modifier.fillMaxWidth())
         Text(
@@ -194,15 +202,18 @@ private fun SitzplanFrageInhalt(
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(vertical = 12.dp),
         )
-        Box(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()), contentAlignment = Alignment.TopCenter) {
+        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+          val viewport = maxWidth
+          Box(Modifier.fillMaxSize().transformable(zoomGeste).verticalScroll(rememberScrollState()).horizontalScroll(rememberScrollState())) {
+           Box(Modifier.widthIn(min = viewport), contentAlignment = Alignment.TopCenter) {
             SitzplanFlaeche(
                 plan = plan,
                 plaetze = phase.plaetze,
                 schuelerProId = schuelerProId,
                 blickrichtung = blickrichtung,
                 fotoStore = fotoStore,
+                zoom = zoom,
                 namenZeigen = false,
-                modifier = Modifier.widthIn(max = 900.dp),
                 markierung = { platz ->
                     val fb = phase.feedback
                     when {
@@ -218,6 +229,8 @@ private fun SitzplanFrageInhalt(
                 },
             )
         }
+           }
+          }
     }
 }
 

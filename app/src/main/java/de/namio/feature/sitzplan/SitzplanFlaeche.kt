@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -19,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -58,6 +60,8 @@ fun SitzplanFlaeche(
     blickrichtung: Blickrichtung,
     fotoStore: FotoStore,
     modifier: Modifier = Modifier,
+    /** 1 = Raum füllt die Breite; größer = Kacheln größer, Fläche wird scrollbar. */
+    zoom: Float = 1f,
     namenZeigen: Boolean = true,
     rasterZeigen: Boolean = false,
     markierung: (Sitzplatz) -> PlatzMarkierung = { PlatzMarkierung.KEINE },
@@ -66,17 +70,20 @@ fun SitzplanFlaeche(
     platzModifier: (Sitzplatz) -> Modifier = { Modifier },
 ) {
     val tafelOben = blickrichtung == Blickrichtung.VON_HINTEN
-    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        if (tafelOben) Tafel()
-        BoxWithConstraints(Modifier.fillMaxWidth()) {
-            val breite = maxWidth
-            val einheit: Dp = breite / plan.spalten
-            val hoehe: Dp = einheit * plan.reihen
+    BoxWithConstraints(modifier) {
+        // Im Scrollcontainer ist die Breite unbegrenzt – dann auf die Basisbreite zurückfallen.
+        val basis: Dp = if (maxWidth.value.isFinite() && maxWidth < BASIS_BREITE) maxWidth else BASIS_BREITE
+        val einheit: Dp = (basis / plan.spalten) * zoom
+        val breite: Dp = einheit * plan.spalten
+        val hoehe: Dp = einheit * plan.reihen
+        Column(Modifier.width(breite), horizontalAlignment = Alignment.CenterHorizontally) {
+        if (tafelOben) Tafel(breite)
+        Box(Modifier.width(breite)) {
             val dichte = LocalDensity.current
             with(dichte) { onGeometrie?.invoke(FlaechenGeometrie(breite.toPx(), hoehe.toPx(), einheit.toPx())) }
             Box(
                 Modifier
-                    .fillMaxWidth()
+                    .width(breite)
                     .height(hoehe)
                     .background(MaterialTheme.colorScheme.surfaceContainerLow, RoundedCornerShape(8.dp))
                     .then(flaechenModifier),
@@ -109,16 +116,20 @@ fun SitzplanFlaeche(
                 }
             }
         }
-        if (!tafelOben) Tafel()
+        if (!tafelOben) Tafel(breite)
+        }
     }
 }
 
+/** Basisbreite des Raums bei Zoom 1 – etwa eine Tabletbreite; Handys zoomen automatisch passend. */
+val BASIS_BREITE: Dp = 800.dp
+
 @Composable
-private fun Tafel() {
+private fun Tafel(breite: Dp) {
     Box(
         Modifier
             .padding(vertical = 6.dp)
-            .fillMaxWidth(0.7f)
+            .width(breite * 0.7f)
             .background(Color(0xFF2F4F3F), RoundedCornerShape(6.dp))
             .padding(vertical = 5.dp),
         contentAlignment = Alignment.Center,
@@ -147,6 +158,14 @@ private fun Platz(
     val dicke = if (markierung == PlatzMarkierung.KEINE) 1.dp else 3.dp
     val form = RoundedCornerShape(groesse / 8)
     val zeigeName = namenZeigen && groesse >= 56.dp
+    // Inhalt dreht mit dem Tisch, steht aber nie auf dem Kopf: Text bleibt im Bereich −90°…+90°.
+    val kopfueber = ((drehung % 360) + 360) % 360 in 90f..270f
+    val inhaltDrehung = if (kopfueber) 180f else 0f
+    val namenStil = when {
+        groesse >= 96.dp -> MaterialTheme.typography.labelLarge
+        groesse >= 72.dp -> MaterialTheme.typography.labelMedium
+        else -> MaterialTheme.typography.labelSmall
+    }
     Box(
         modifier
             .size(groesse)
@@ -164,8 +183,7 @@ private fun Platz(
     ) {
         // Tischkante: die Seite, in die der Platz „blickt“ (bei 0° oben, Richtung Tafel)
         if (beschriftung == null) Box(Modifier.fillMaxWidth(0.7f).height(3.dp).align(Alignment.TopCenter).offset(y = groesse * 0.06f).background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)))
-        // Inhalt gegenrotieren, damit Gesichter und Namen immer aufrecht stehen
-        Box(Modifier.fillMaxSize().graphicsLayer { rotationZ = -drehung }, contentAlignment = Alignment.Center) {
+        Box(Modifier.fillMaxSize().graphicsLayer { rotationZ = inhaltDrehung }, contentAlignment = Alignment.Center) {
             if (schueler != null) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     SchuelerFoto(
@@ -174,14 +192,16 @@ private fun Platz(
                         modifier = Modifier.size(if (zeigeName) groesse * 0.58f else groesse * 0.78f).clip(RoundedCornerShape(6.dp)),
                     )
                     if (zeigeName) {
-                        Text(
-                            schueler.anzeigeName,
-                            style = MaterialTheme.typography.labelSmall,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(horizontal = 2.dp).fillMaxWidth(),
-                        )
+                        Box(Modifier.width(groesse - 6.dp).clipToBounds(), contentAlignment = Alignment.Center) {
+                            Text(
+                                schueler.anzeigeName,
+                                style = namenStil,
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = TextOverflow.Ellipsis,
+                                textAlign = TextAlign.Center,
+                            )
+                        }
                     }
                 }
             } else if (beschriftung != null) {

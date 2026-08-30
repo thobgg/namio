@@ -123,6 +123,8 @@
     <string name="moebel_pc">PC</string>
     <string name="moebel_schrank">Cabinet</string>
     <string name="moebel_tuer">Door</string>
+    <string name="sitzplan_vergroessern">Zoom in</string>
+    <string name="sitzplan_verkleinern">Zoom out</string>
     <string name="sitzplan_platz_loeschen">Delete seat</string>
     <string name="sitzplan_unplatziert">Not seated yet: %1$d</string>
     <string name="sitzplan_alle_platziert">Everyone is seated. Drag here to remove someone from the plan.</string>

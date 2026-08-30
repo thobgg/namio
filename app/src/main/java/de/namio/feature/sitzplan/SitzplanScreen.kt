@@ -4,8 +4,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.material.icons.filled.ZoomIn
+import androidx.compose.material.icons.filled.ZoomOut
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -115,6 +121,9 @@ fun SitzplanScreen(
     )
 }
 
+private const val ZOOM_MIN = 0.5f
+private const val ZOOM_MAX = 3f
+
 /** Alle Editor-Aktionen gebündelt, damit die Composables schlank bleiben. */
 data class SitzplanAktionen(
     val planWaehlen: (Long) -> Unit,
@@ -157,6 +166,8 @@ private fun SitzplanInhalt(
     var ausgewaehlterPlatz by remember { mutableStateOf<Long?>(null) }
     var ausgewaehlterSchueler by remember { mutableStateOf<Long?>(null) }
     var drag by remember { mutableStateOf<Drag?>(null) }
+    var zoom by rememberSaveable { mutableStateOf(1f) }
+    val zoomGeste = rememberTransformableState { faktor, _, _ -> zoom = (zoom * faktor).coerceIn(ZOOM_MIN, ZOOM_MAX) }
     var flaeche by remember { mutableStateOf<Rect?>(null) }
     var leiste by remember { mutableStateOf<Rect?>(null) }
     var wurzel by remember { mutableStateOf(Offset.Zero) }
@@ -250,26 +261,40 @@ private fun SitzplanInhalt(
                             }
                         }
                     }
-                    Text(
-                        stringResource(
-                            when {
-                                ausgewaehlterSchueler != null -> R.string.sitzplan_hinweis_platz
-                                gewaehlt != null -> R.string.sitzplan_hinweis_gewaehlt
-                                else -> R.string.sitzplan_hinweis
-                            },
-                        ),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                    )
-                    Box(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()), contentAlignment = Alignment.TopCenter) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp)) {
+                        Text(
+                            stringResource(
+                                when {
+                                    ausgewaehlterSchueler != null -> R.string.sitzplan_hinweis_platz
+                                    gewaehlt != null -> R.string.sitzplan_hinweis_gewaehlt
+                                    else -> R.string.sitzplan_hinweis
+                                },
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f),
+                        )
+                        IconButton(onClick = { zoom = (zoom / 1.25f).coerceIn(ZOOM_MIN, ZOOM_MAX) }) { Icon(Icons.Default.ZoomOut, contentDescription = stringResource(R.string.sitzplan_verkleinern)) }
+                        IconButton(onClick = { zoom = (zoom * 1.25f).coerceIn(ZOOM_MIN, ZOOM_MAX) }) { Icon(Icons.Default.ZoomIn, contentDescription = stringResource(R.string.sitzplan_vergroessern)) }
+                    }
+                    BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+                      val viewport = maxWidth
+                      Box(
+                        Modifier
+                            .fillMaxSize()
+                            .transformable(zoomGeste)
+                            .verticalScroll(rememberScrollState())
+                            .horizontalScroll(rememberScrollState()),
+                      ) {
+                       Box(Modifier.widthIn(min = viewport), contentAlignment = Alignment.TopCenter) {
                         SitzplanFlaeche(
                             plan = plan,
                             plaetze = state.plaetze,
                             schuelerProId = state.schuelerProId,
                             blickrichtung = state.blickrichtung,
                             fotoStore = fotoStore,
-                            modifier = Modifier.widthIn(max = 900.dp).padding(8.dp),
+                            zoom = zoom,
+                            modifier = Modifier.padding(8.dp),
                             rasterZeigen = plan.einrasten,
                             markierung = { if (it.id == ausgewaehlterPlatz) PlatzMarkierung.AUSGEWAEHLT else PlatzMarkierung.KEINE },
                             flaechenModifier = Modifier
@@ -318,6 +343,8 @@ private fun SitzplanInhalt(
                             },
                         )
                     }
+                       }
+                      }
                     if (gewaehlt != null) {
                         PlatzWerkzeuge(
                             platz = gewaehlt,

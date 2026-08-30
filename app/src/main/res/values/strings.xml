@@ -123,6 +123,8 @@
     <string name="moebel_pc">PC</string>
     <string name="moebel_schrank">Schrank</string>
     <string name="moebel_tuer">Tür</string>
+    <string name="sitzplan_vergroessern">Vergrößern</string>
+    <string name="sitzplan_verkleinern">Verkleinern</string>
     <string name="sitzplan_platz_loeschen">Platz löschen</string>
     <string name="sitzplan_unplatziert">Noch ohne Platz: %1$d</string>
     <string name="sitzplan_alle_platziert">Alle sitzen. Hierher ziehen, um jemanden vom Plan zu nehmen.</string>
