@@ -79,6 +79,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -303,7 +306,8 @@ private fun SitzplanInhalt(
                         if (!state.gesperrt) {
                             IconButton(onClick = aktionen.rueckgaengig, enabled = state.kannRueckgaengig) { Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = stringResource(R.string.sitzplan_rueckgaengig)) }
                         }
-                        IconButton(onClick = { aktionen.sperre(); auswahl = emptyList(); ausgewaehlterSchueler = null }) {
+                        val sperrZustand = stringResource(if (state.gesperrt) R.string.sitzplan_zustand_gesperrt else R.string.sitzplan_zustand_offen)
+                    IconButton(onClick = { aktionen.sperre(); auswahl = emptyList(); ausgewaehlterSchueler = null }, modifier = Modifier.semantics { stateDescription = sperrZustand }) {
                             Icon(
                                 if (state.gesperrt) Icons.Default.Lock else Icons.Default.LockOpen,
                                 contentDescription = stringResource(if (state.gesperrt) R.string.sitzplan_entsperren else R.string.sitzplan_sperren),
@@ -361,7 +365,7 @@ private fun SitzplanInhalt(
                     if (ausgeloster != null) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.tertiaryContainer).clickable { aktionen.auslosungBeenden() }.padding(horizontal = 16.dp, vertical = 8.dp),
+                            modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.tertiaryContainer).clickable(role = Role.Button) { aktionen.auslosungBeenden() }.padding(horizontal = 16.dp, vertical = 8.dp),
                         ) {
                             Icon(Icons.Default.Casino, contentDescription = null, tint = MaterialTheme.colorScheme.onTertiaryContainer)
                             Spacer(Modifier.size(10.dp))
@@ -773,7 +777,7 @@ private fun UnplatziertLeiste(
                     modifier = Modifier
                         .clip(RoundedCornerShape(10.dp))
                         .background(if (s.id == ausgewaehlt) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface)
-                        .clickable { onTipp(s) }
+                        .clickable(role = Role.Button) { onTipp(s) }
                         .onGloballyPositioned { anker = it.boundsInRoot().topLeft }
                         .dragQuelle(key = "leiste" + s.id, anker = { anker }, start = { Drag.Schueler(s, it) }, onDrag = onDrag, onDrop = onDrop)
                         .padding(6.dp),

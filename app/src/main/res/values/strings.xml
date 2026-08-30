@@ -21,6 +21,7 @@
     <string name="klasse_schueler_anzahl">%1$d Schüler</string>
     <string name="klasse_fortschritt">%1$d %% gelernt</string>
     <string name="klasse_loeschen">Klasse löschen</string>
+    <string name="klasse_vorlesen">Klasse %1$s, %2$d Schüler, %3$d Prozent gelernt</string>
     <string name="klasse_loeschen_frage">„%1$s“ mit allen Schülern und Fotos endgültig löschen?</string>
 
     <!-- Klassendetail -->
@@ -140,6 +141,8 @@
     <string name="sitzplan_vergroessern">Vergrößern</string>
     <string name="sitzplan_verkleinern">Verkleinern</string>
     <string name="sitzplan_sperren">Änderungen sperren</string>
+    <string name="sitzplan_zustand_gesperrt">gesperrt</string>
+    <string name="sitzplan_zustand_offen">bearbeitbar</string>
     <string name="sitzplan_entsperren">Bearbeiten</string>
     <string name="sitzplan_rueckgaengig">Rückgängig</string>
     <string name="sitzplan_auslosen">Zufällige Person</string>
@@ -188,6 +191,7 @@
     <string name="statistik_verwechslungen">Häufigste Verwechslungen</string>
     <string name="statistik_keine_verwechslungen">Noch keine Verwechslungen – gut so.</string>
     <string name="statistik_mal">%1$d-mal verwechselt</string>
+    <string name="statistik_verwechslung_vorlesen">%1$s und %2$s, %3$d-mal verwechselt</string>
 
     <!-- CSV-Import -->
     <string name="csv_titel">CSV-Import</string>

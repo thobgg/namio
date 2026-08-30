@@ -40,6 +40,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -189,7 +190,7 @@ private fun KlassenDetailInhalt(
 @Composable
 private fun SchuelerKachel(schueler: Schueler, fotoStore: FotoStore, onKlick: () -> Unit) {
     Column(
-        modifier = Modifier.clickable(onClick = onKlick),
+        modifier = Modifier.clickable(role = Role.Button, onClick = onKlick),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         SchuelerFoto(

@@ -44,6 +44,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -183,11 +186,13 @@ private fun KlassenKarte(
     onLoeschen: () -> Unit,
 ) {
     var menueOffen by remember { mutableStateOf(false) }
+    val vorlesen = stringResource(R.string.klasse_vorlesen, eintrag.klasse.name, eintrag.schuelerAnzahl, eintrag.fortschrittProzent)
     Card(
         modifier = Modifier
             .widthIn(max = INHALT_MAX_BREITE)
             .fillMaxWidth()
-            .combinedClickable(onClick = onKlick, onLongClick = { menueOffen = true }),
+            .semantics(mergeDescendants = true) { contentDescription = vorlesen }
+            .combinedClickable(role = Role.Button, onClick = onKlick, onLongClick = { menueOffen = true }),
     ) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {

@@ -38,6 +38,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
@@ -295,7 +296,7 @@ private fun NameZuFotoInhalt(
                         .clip(RoundedCornerShape(14.dp))
                         .border(4.dp, rahmen, RoundedCornerShape(14.dp))
                         .alpha(if (zustand == AntwortZustand.GEDIMMT) 0.4f else 1f)
-                        .then(if (phase.feedback == null) Modifier.clickable { onAntwort(option) } else Modifier),
+                        .then(if (phase.feedback == null) Modifier.clickable(role = Role.Button) { onAntwort(option) } else Modifier),
                 )
             }
         }
@@ -354,7 +355,7 @@ private fun SitzplanFrageInhalt(
                 },
                 slotModifier = { _, platz ->
                     val s = platz.schuelerId?.let(schuelerProId::get)
-                    if (s != null && phase.feedback == null) Modifier.clickable { onAntwort(s) } else Modifier
+                    if (s != null && phase.feedback == null) Modifier.clickable(role = Role.Button) { onAntwort(s) } else Modifier
                 },
             )
         }
