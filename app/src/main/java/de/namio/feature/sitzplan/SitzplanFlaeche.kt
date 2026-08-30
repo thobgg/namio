@@ -221,7 +221,9 @@ private fun Slot(
         PlatzMarkierung.FALSCH -> MaterialTheme.colorScheme.error
     }
     val zeigeName = namenZeigen && einheit >= 56.dp
+    val zweizeilig = einheit >= 80.dp && (schueler?.anzeigeName?.contains(' ') == true)
     val namenStil = when {
+        zweizeilig -> MaterialTheme.typography.labelSmall
         einheit >= 96.dp -> MaterialTheme.typography.labelLarge
         einheit >= 72.dp -> MaterialTheme.typography.labelMedium
         else -> MaterialTheme.typography.labelSmall
@@ -239,11 +241,19 @@ private fun Slot(
                 SchuelerFoto(
                     datei = schueler.fotoDatei?.let(fotoStore::datei),
                     beschreibung = schueler.vollerName,
-                    modifier = Modifier.size(if (zeigeName) einheit * 0.55f else einheit * 0.75f).clip(RoundedCornerShape(6.dp)),
+                    modifier = Modifier.size(if (!zeigeName) einheit * 0.75f else if (zweizeilig) einheit * 0.46f else einheit * 0.55f).clip(RoundedCornerShape(6.dp)),
                 )
                 if (zeigeName) {
                     Box(Modifier.width(einheit - 10.dp).clipToBounds(), contentAlignment = Alignment.Center) {
-                        Text(schueler.anzeigeName, style = namenStil, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
+                        Text(
+                            schueler.anzeigeName,
+                            style = namenStil,
+                            maxLines = if (zweizeilig) 2 else 1,
+                            softWrap = zweizeilig,
+                            overflow = TextOverflow.Ellipsis,
+                            textAlign = TextAlign.Center,
+                            lineHeight = namenStil.fontSize * 1.1f,
+                        )
                     }
                 }
             }
