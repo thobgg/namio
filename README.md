@@ -50,6 +50,7 @@ Die App verarbeitet Fotos von Minderjährigen. Deshalb gelten harte Regeln, kein
 **Klassen & Schüler**
 - Klassenliste mit Lernfortschritt, Schülerraster mit Fotos
 - Foto per Kamera (quadratischer Sucher mit Gesichtsrahmen), aus der Galerie oder aus 35 mitgelieferten Cartoon-Avataren
+- Fotorunde: Kamera bleibt offen, ein Kind ohne Foto nach dem anderen, Überspringen für Abwesende
 - Vorname, Nachname, Spitzname, Notiz, Geschlecht
 - CSV-Import der Klassenliste (Untis/Excel): Trennzeichen und Zeichensatz werden erkannt, Spaltenzuordnung mit Vorschau
 - Demoklasse mit 24 Schülern beim ersten Start, jederzeit löschbar
