@@ -14,6 +14,10 @@ Klassen anlegen, Fotos zuordnen, per Quiz mit Spaced Repetition üben — komple
   <img src="docs/screenshots/frage.png" width="180" alt="Quizfrage">
   <img src="docs/screenshots/ergebnis.png" width="180" alt="Ergebnis">
 </p>
+<p align="center">
+  <img src="docs/screenshots/sitzplan.png" width="180" alt="Sitzplan-Editor">
+  <img src="docs/screenshots/sitzplan_quiz.png" width="180" alt="Sitzplan-Quiz">
+</p>
 
 ## Datenschutz zuerst
 
@@ -31,9 +35,17 @@ Die App verarbeitet Fotos von Minderjährigen. Deshalb gelten harte Regeln, kein
 - Klassenliste mit Lernfortschritt, Schülerraster mit Fotos
 - Foto per Kamera (quadratischer Sucher mit Gesichtsrahmen), aus der Galerie oder aus 35 mitgelieferten Cartoon-Avataren
 - Vorname, Nachname, Spitzname, Notiz, Geschlecht
+- Demoklasse mit 24 Schülern beim ersten Start, jederzeit löschbar
+- Deutsch und Englisch
+
+**Sitzplan**
+- Raster mit Doppeltischen und Gängen, leere Stühle für U-Form und Gruppentische
+- Drag & Drop oder Antippen, Sitzordnung mischen, mehrere Pläne pro Klasse
+- Blickrichtung umschaltbar: von vorn (Tafel beim Lehrer) oder wie auf dem Papier
 
 **Quiz**
 - Modus *Foto → Name*: Foto oben, vier Namen zur Auswahl
+- Modus *Sitzplan*: „Wo sitzt …?“ – auf den Platz tippen, trainiert die Situation im Klassenraum
 - Sofortiges Feedback, Fortschrittsbalken, Ergebnis mit Fehlerliste und Wiederholungsrunde
 - Ablenker werden bewusst gewählt: erst frühere Verwechslungen, dann gleicher Anfangsbuchstabe, dann Zufall — immer gleiches Geschlecht, immer aus derselben Klasse
 
@@ -44,8 +56,8 @@ Die App verarbeitet Fotos von Minderjährigen. Deshalb gelten harte Regeln, kein
 
 ## Geplant
 
-- Weitere Modi: Name tippen, Name → Foto, Sitzplan, Speedrun
-- CSV-Import (Untis/Excel), Statistik, Sitzplan-Editor
+- Weitere Modi: Name tippen, Name → Foto, Speedrun
+- CSV-Import (Untis/Excel), Statistik
 - App-Sperre per Biometrie, verschlüsselter Export
 
 ## Tech-Stack

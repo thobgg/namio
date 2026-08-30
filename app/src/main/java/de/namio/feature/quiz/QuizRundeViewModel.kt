@@ -12,6 +12,9 @@ import de.namio.core.model.QuizFehler
 import de.namio.core.model.QuizFrage
 import de.namio.core.model.QuizModus
 import de.namio.core.model.Schueler
+import de.namio.core.model.Sitzplan
+import de.namio.core.model.Sitzplatz
+import de.namio.core.repository.SitzplanRepository
 import de.namio.core.repository.QuizRepository
 import de.namio.ui.navigation.Route
 import kotlinx.coroutines.delay
@@ -33,12 +36,18 @@ sealed interface QuizRundePhase {
     /** Keine Schüler mit Foto – ohne Gesicht kein Quiz. */
     data object KeineKandidaten : QuizRundePhase
 
+    /** Sitzplan-Modus ohne Sitzplan. */
+    data object KeinSitzplan : QuizRundePhase
+
     data class Frage(
         val frage: QuizFrage,
         val fortschritt: Float,
         val erledigt: Int,
         val gesamt: Int,
         val feedback: Feedback? = null,
+        /** Nur im Sitzplan-Modus: der gerenderte Plan. */
+        val sitzplan: Sitzplan? = null,
+        val plaetze: List<Sitzplatz> = emptyList(),
     ) : QuizRundePhase
 
     data class Ergebnis(
@@ -57,6 +66,7 @@ data class QuizRundeUiState(
 class QuizRundeViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val repository: QuizRepository,
+    private val sitzplanRepository: SitzplanRepository,
     private val clock: Clock,
 ) : ViewModel() {
 
@@ -69,6 +79,8 @@ class QuizRundeViewModel @Inject constructor(
     val uiState: StateFlow<QuizRundeUiState> = _uiState.asStateFlow()
 
     private var alleSchueler: List<Schueler> = emptyList()
+    private var sitzplan: Sitzplan? = null
+    private var plaetze: List<Sitzplatz> = emptyList()
     private var runde = QuizRunde(emptyList())
     private var sessionId = 0L
     private var sessionStart = 0L
@@ -91,7 +103,18 @@ class QuizRundeViewModel @Inject constructor(
     private suspend fun starten(nurSchueler: List<Long>?) {
         _uiState.update { it.copy(phase = QuizRundePhase.Laedt) }
         alleSchueler = repository.schuelerDerKlasse(klasseId)
-        val mitFoto = alleSchueler.filter { it.fotoDatei != null }.map { it.id }
+        var mitFoto = alleSchueler.filter { it.fotoDatei != null }.map { it.id }
+        if (modus == QuizModus.SITZPLAN) {
+            val plan = sitzplanRepository.standardplan(klasseId)
+            val sitzend = plan?.second?.mapNotNull { it.schuelerId }?.toSet().orEmpty()
+            mitFoto = mitFoto.filter { it in sitzend }
+            if (plan == null || mitFoto.isEmpty()) {
+                _uiState.update { it.copy(phase = QuizRundePhase.KeinSitzplan) }
+                return
+            }
+            sitzplan = plan.first
+            plaetze = plan.second
+        }
         val reihenfolge = when {
             nurSchueler != null -> nurSchueler.filter { it in mitFoto }
             else -> {
@@ -130,7 +153,8 @@ class QuizRundeViewModel @Inject constructor(
             verwechslungen = repository.verwechslungen(zielId),
             anzahl = ANZAHL_ABLENKER,
         )
-        val optionen = (ablenker + ziel).shuffled()
+        // Im Sitzplan-Modus ist der ganze Plan die Auswahl – alle Schüler gehören ins Raster.
+        val optionen = if (modus == QuizModus.SITZPLAN) alleSchueler else (ablenker + ziel).shuffled()
         frageGezeigtAb = clock.millis()
         _uiState.update {
             it.copy(
@@ -139,6 +163,8 @@ class QuizRundeViewModel @Inject constructor(
                     fortschritt = runde.fortschritt,
                     erledigt = runde.fertig,
                     gesamt = runde.anzahl,
+                    sitzplan = sitzplan,
+                    plaetze = plaetze,
                 ),
             )
         }

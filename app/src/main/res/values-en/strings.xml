@@ -84,4 +84,30 @@
     <string name="ergebnis_verwechselt_mit">confused with %1$s</string>
     <string name="ergebnis_fehler_wiederholen">Repeat mistakes</string>
     <string name="ergebnis_fertig">Done</string>
+
+    <!-- Seating plan -->
+    <string name="sitzplan_oeffnen">Seating plan</string>
+    <string name="sitzplan_titel">Seating plan · %1$s</string>
+    <string name="sitzplan_keiner">No seating plan yet. Create one and drag the students to their seats.</string>
+    <string name="sitzplan_neu">New seating plan</string>
+    <string name="sitzplan_bearbeiten">Change name and size</string>
+    <string name="sitzplan_als_standard">Use as default</string>
+    <string name="sitzplan_loeschen">Delete seating plan</string>
+    <string name="sitzplan_loeschen_frage">Delete “%1$s”? The students are kept.</string>
+    <string name="sitzplan_standardname">Classroom</string>
+    <string name="sitzplan_name">Name</string>
+    <string name="sitzplan_spalten">Columns</string>
+    <string name="sitzplan_reihen">Rows</string>
+    <string name="sitzplan_doppeltische">Paired desks with aisles</string>
+    <string name="sitzplan_max">At most %1$d columns and %2$d rows.</string>
+    <string name="sitzplan_tafel">Board</string>
+    <string name="sitzplan_leer">empty</string>
+    <string name="sitzplan_blickrichtung">Switch viewing direction</string>
+    <string name="sitzplan_mischen">Shuffle seating</string>
+    <string name="sitzplan_hinweis">Long-press and drag a student – or tap them, then tap the seat. Tap an empty cell for an empty chair.</string>
+    <string name="sitzplan_hinweis_platz">Now tap the target seat.</string>
+    <string name="sitzplan_unplatziert">Not seated yet: %1$d</string>
+    <string name="sitzplan_alle_platziert">Everyone is seated. Drag here to remove someone from the plan.</string>
+    <string name="quiz_sitzplan_frage">Where does %1$s sit?</string>
+    <string name="quiz_sitzplan_kein_plan">This class has no seating plan with students yet. Create one first.</string>
 </resources>

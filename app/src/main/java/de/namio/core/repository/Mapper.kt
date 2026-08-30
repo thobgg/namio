@@ -3,6 +3,10 @@ package de.namio.core.repository
 import de.namio.core.data.entity.KlasseEntity
 import de.namio.core.data.entity.LernkarteEntity
 import de.namio.core.data.entity.SchuelerEntity
+import de.namio.core.data.entity.SitzplanEntity
+import de.namio.core.data.entity.SitzplatzEntity
+import de.namio.core.model.Sitzplan
+import de.namio.core.model.Sitzplatz
 import de.namio.core.model.Klasse
 import de.namio.core.model.Lernkarte
 import de.namio.core.model.Schueler
@@ -60,3 +64,7 @@ internal fun Lernkarte.zuEntity() = LernkarteEntity(
     serieRichtig = serieRichtig,
     letzteAntwortAm = letzteAntwortAm?.toEpochMilli(),
 )
+
+internal fun SitzplanEntity.zuModell() = Sitzplan(id, klasseId, name, spalten, reihen, istStandard, doppeltische)
+internal fun SitzplatzEntity.zuModell() = Sitzplatz(id, sitzplanId, schuelerId, spalte, reihe)
+internal fun Sitzplatz.zuEntity() = SitzplatzEntity(id, sitzplanId, schuelerId, spalte, reihe)

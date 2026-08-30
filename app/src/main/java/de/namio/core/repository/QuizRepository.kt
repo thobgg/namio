@@ -4,6 +4,7 @@ import de.namio.core.data.dao.LernkarteDao
 import de.namio.core.data.dao.QuizAntwortDao
 import de.namio.core.data.dao.QuizSessionDao
 import de.namio.core.data.dao.SchuelerDao
+import de.namio.core.data.dao.SitzplatzDao
 import de.namio.core.data.entity.QuizAntwortEntity
 import de.namio.core.data.entity.QuizSessionEntity
 import de.namio.core.lernen.KartenAuswahl
@@ -24,6 +25,7 @@ class QuizRepository @Inject constructor(
     private val lernkarteDao: LernkarteDao,
     private val sessionDao: QuizSessionDao,
     private val antwortDao: QuizAntwortDao,
+    private val sitzplatzDao: SitzplatzDao,
     private val clock: Clock,
 ) {
     /** Alle Schüler der Klasse (auch ohne Foto – als Ablenker brauchbar). */
@@ -41,10 +43,13 @@ class QuizRepository @Inject constructor(
     fun observeFaelligProModus(klasseId: Long): Flow<Map<QuizModus, Int>> = combine(
         schuelerDao.observeFuerKlasse(klasseId),
         lernkarteDao.observeFuerKlasse(klasseId),
-    ) { schueler, karten ->
-        val kandidaten = schueler.filter { it.fotoDatei != null }.map { it.id }
+        sitzplatzDao.observeSchuelerImStandardplan(klasseId),
+    ) { schueler, karten, sitzend ->
+        val mitFoto = schueler.filter { it.fotoDatei != null }.map { it.id }
         val jetzt = clock.instant()
         QuizModus.entries.associateWith { modus ->
+            // Der Sitzplan-Modus kann nur abfragen, wer im Standardplan sitzt.
+            val kandidaten = if (modus == QuizModus.SITZPLAN) mitFoto.filter { it in sitzend } else mitFoto
             val modusKarten = karten.filter { it.modus == modus }.map { it.zuModell() }
             KartenAuswahl.anzahlFaellig(kandidaten, modusKarten, jetzt)
         }

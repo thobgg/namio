@@ -34,7 +34,7 @@ import de.namio.core.data.entity.SitzplatzEntity
         SitzplanEntity::class,
         SitzplatzEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -91,6 +91,13 @@ abstract class NamioDatabase : RoomDatabase() {
             }
         }
 
-        val ALLE_MIGRATIONEN = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
+        /** v4: Doppeltisch-Darstellung am Sitzplan. */
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE sitzplan ADD COLUMN doppeltische INTEGER NOT NULL DEFAULT 1")
+            }
+        }
+
+        val ALLE_MIGRATIONEN = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
     }
 }

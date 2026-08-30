@@ -143,6 +143,18 @@ interface SitzplanDao {
     @Query("SELECT * FROM sitzplan WHERE klasseId = :klasseId ORDER BY istStandard DESC, name COLLATE NOCASE")
     fun observeFuerKlasse(klasseId: Long): Flow<List<SitzplanEntity>>
 
+    @Query("SELECT * FROM sitzplan WHERE id = :id")
+    suspend fun get(id: Long): SitzplanEntity?
+
+    @Query("SELECT * FROM sitzplan WHERE klasseId = :klasseId ORDER BY istStandard DESC, id LIMIT 1")
+    suspend fun standardFuerKlasse(klasseId: Long): SitzplanEntity?
+
+    @Query("SELECT COUNT(*) FROM sitzplan WHERE klasseId = :klasseId")
+    suspend fun anzahlFuerKlasse(klasseId: Long): Int
+
+    @Query("UPDATE sitzplan SET istStandard = (id = :planId) WHERE klasseId = :klasseId")
+    suspend fun setzeStandard(klasseId: Long, planId: Long)
+
     @Insert
     suspend fun insert(sitzplan: SitzplanEntity): Long
 
@@ -158,8 +170,29 @@ interface SitzplatzDao {
     @Query("SELECT * FROM sitzplatz WHERE sitzplanId = :sitzplanId")
     fun observeFuerPlan(sitzplanId: Long): Flow<List<SitzplatzEntity>>
 
+    @Query("SELECT * FROM sitzplatz WHERE sitzplanId = :sitzplanId")
+    suspend fun fuerPlan(sitzplanId: Long): List<SitzplatzEntity>
+
+    /** Belegte Plätze des Standardplans einer Klasse – Kandidaten für den Sitzplan-Quizmodus. */
+    @Query(
+        """
+        SELECT p.schuelerId FROM sitzplatz p JOIN sitzplan s ON s.id = p.sitzplanId
+        WHERE s.klasseId = :klasseId AND s.istStandard = 1 AND p.schuelerId IS NOT NULL
+        """,
+    )
+    fun observeSchuelerImStandardplan(klasseId: Long): Flow<List<Long>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(platz: SitzplatzEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAlle(plaetze: List<SitzplatzEntity>)
+
+    @Query("DELETE FROM sitzplatz WHERE sitzplanId = :sitzplanId")
+    suspend fun loescheAlleFuerPlan(sitzplanId: Long)
+
+    @Query("DELETE FROM sitzplatz WHERE id IN (:ids)")
+    suspend fun loesche(ids: List<Long>)
 
     @Delete
     suspend fun delete(platz: SitzplatzEntity)

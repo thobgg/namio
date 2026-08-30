@@ -141,6 +141,8 @@ data class SitzplanEntity(
     val spalten: Int,
     val reihen: Int,
     val istStandard: Boolean = false,
+    /** Doppeltische: nach jeder zweiten Spalte ein Gang (nur Darstellung). */
+    @ColumnInfo(defaultValue = "1") val doppeltische: Boolean = true,
 )
 
 @Entity(

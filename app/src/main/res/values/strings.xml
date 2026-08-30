@@ -84,4 +84,30 @@
     <string name="ergebnis_verwechselt_mit">verwechselt mit %1$s</string>
     <string name="ergebnis_fehler_wiederholen">Fehler wiederholen</string>
     <string name="ergebnis_fertig">Fertig</string>
+
+    <!-- Sitzplan -->
+    <string name="sitzplan_oeffnen">Sitzplan</string>
+    <string name="sitzplan_titel">Sitzplan · %1$s</string>
+    <string name="sitzplan_keiner">Noch kein Sitzplan. Lege einen an und zieh die Schüler auf ihre Plätze.</string>
+    <string name="sitzplan_neu">Neuer Sitzplan</string>
+    <string name="sitzplan_bearbeiten">Name und Größe ändern</string>
+    <string name="sitzplan_als_standard">Als Standard verwenden</string>
+    <string name="sitzplan_loeschen">Sitzplan löschen</string>
+    <string name="sitzplan_loeschen_frage">„%1$s“ löschen? Die Schüler bleiben erhalten.</string>
+    <string name="sitzplan_standardname">Klassenraum</string>
+    <string name="sitzplan_name">Name</string>
+    <string name="sitzplan_spalten">Spalten</string>
+    <string name="sitzplan_reihen">Reihen</string>
+    <string name="sitzplan_doppeltische">Doppeltische mit Gängen</string>
+    <string name="sitzplan_max">Höchstens %1$d Spalten und %2$d Reihen.</string>
+    <string name="sitzplan_tafel">Tafel</string>
+    <string name="sitzplan_leer">frei</string>
+    <string name="sitzplan_blickrichtung">Blickrichtung wechseln</string>
+    <string name="sitzplan_mischen">Sitzordnung mischen</string>
+    <string name="sitzplan_hinweis">Schüler lange drücken und ziehen – oder antippen, dann den Platz antippen. Leeres Feld antippen: freier Stuhl.</string>
+    <string name="sitzplan_hinweis_platz">Jetzt den Zielplatz antippen.</string>
+    <string name="sitzplan_unplatziert">Noch ohne Platz: %1$d</string>
+    <string name="sitzplan_alle_platziert">Alle sitzen. Hierher ziehen, um jemanden vom Plan zu nehmen.</string>
+    <string name="quiz_sitzplan_frage">Wo sitzt %1$s?</string>
+    <string name="quiz_sitzplan_kein_plan">Für diese Klasse gibt es noch keinen Sitzplan mit Schülern. Leg zuerst einen an.</string>
 </resources>

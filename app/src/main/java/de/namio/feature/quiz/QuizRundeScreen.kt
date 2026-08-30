@@ -48,6 +48,18 @@ import de.namio.R
 import de.namio.core.media.FotoStore
 import de.namio.core.model.QuizFehler
 import de.namio.core.model.Schueler
+import de.namio.core.model.Blickrichtung
+import de.namio.core.model.QuizModus
+import de.namio.feature.sitzplan.PlatzMarkierung
+import de.namio.feature.sitzplan.SitzplanRaster
+import de.namio.ui.components.EinstellungenEntryPoint
+import dagger.hilt.android.EntryPointAccessors
+import androidx.compose.runtime.State
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import de.namio.feature.klassen.rememberFotoStore
 import de.namio.ui.components.INHALT_MAX_BREITE
 import de.namio.ui.components.SchuelerFoto
@@ -98,7 +110,14 @@ private fun QuizRundeInhalt(
                     textAlign = TextAlign.Center,
                     modifier = Modifier.align(Alignment.Center).padding(32.dp),
                 )
-                is QuizRundePhase.Frage -> FrageInhalt(phase, fotoStore, onAntwort)
+                QuizRundePhase.KeinSitzplan -> Text(
+                    stringResource(R.string.quiz_sitzplan_kein_plan),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.align(Alignment.Center).padding(32.dp),
+                )
+                is QuizRundePhase.Frage ->
+                    if (state.modus == QuizModus.SITZPLAN) SitzplanFrageInhalt(phase, fotoStore, onAntwort)
+                    else FrageInhalt(phase, fotoStore, onAntwort)
                 is QuizRundePhase.Ergebnis -> ErgebnisInhalt(phase, fotoStore, onFehlerWiederholen, onBeenden)
             }
         }
@@ -149,6 +168,65 @@ private fun FrageInhalt(
             }
         }
     }
+}
+
+/** Sitzplan-Modus: Name oben, der Plan darunter; Antwort durch Tippen auf den Platz. */
+@Composable
+private fun SitzplanFrageInhalt(
+    phase: QuizRundePhase.Frage,
+    fotoStore: FotoStore,
+    onAntwort: (Schueler) -> Unit,
+) {
+    val plan = phase.sitzplan ?: return
+    val ziel = phase.frage.ziel
+    val schuelerProId = phase.frage.optionen.associateBy { it.id }
+    val blickrichtung by rememberBlickrichtung()
+    Column(Modifier.fillMaxSize().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        LinearProgressIndicator(progress = { phase.fortschritt }, modifier = Modifier.fillMaxWidth())
+        Text(
+            stringResource(R.string.quiz_fortschritt, phase.erledigt, phase.gesamt),
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        Text(
+            stringResource(R.string.quiz_sitzplan_frage, ziel.vollerName),
+            style = MaterialTheme.typography.headlineSmall,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(vertical = 12.dp),
+        )
+        Box(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()), contentAlignment = Alignment.TopCenter) {
+            SitzplanRaster(
+                plan = plan,
+                plaetze = phase.plaetze,
+                schuelerProId = schuelerProId,
+                blickrichtung = blickrichtung,
+                fotoStore = fotoStore,
+                namenZeigen = false,
+                markierung = { platz ->
+                    val fb = phase.feedback
+                    when {
+                        fb == null -> PlatzMarkierung.KEINE
+                        platz.schuelerId == ziel.id -> PlatzMarkierung.RICHTIG
+                        platz.schuelerId == fb.gewaehltId -> PlatzMarkierung.FALSCH
+                        else -> PlatzMarkierung.KEINE
+                    }
+                },
+                zellenModifier = { _, platz ->
+                    val s = platz?.schuelerId?.let(schuelerProId::get)
+                    if (s != null && phase.feedback == null) Modifier.clickable { onAntwort(s) } else Modifier
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun rememberBlickrichtung(): State<Blickrichtung> {
+    val context = LocalContext.current.applicationContext
+    val repo = remember(context) {
+        EntryPointAccessors.fromApplication(context, EinstellungenEntryPoint::class.java).einstellungen()
+    }
+    return repo.blickrichtung.collectAsStateWithLifecycle(initialValue = Blickrichtung.VON_VORN)
 }
 
 @Composable

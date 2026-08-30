@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.AlertDialog
@@ -60,6 +61,7 @@ fun KlassenDetailScreen(
     onZurueck: () -> Unit,
     onSchuelerOeffnen: (Long) -> Unit,
     onQuiz: (Long) -> Unit,
+    onSitzplan: (Long) -> Unit,
     viewModel: KlassenDetailViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -71,6 +73,7 @@ fun KlassenDetailScreen(
         onSchuelerOeffnen = onSchuelerOeffnen,
         onSchuelerAnlegen = { vor, nach, g -> viewModel.schuelerAnlegen(vor, nach, g, onSchuelerOeffnen) },
         onQuiz = { state.klasse?.let { onQuiz(it.id) } },
+        onSitzplan = { state.klasse?.let { onSitzplan(it.id) } },
     )
 }
 
@@ -91,6 +94,7 @@ private fun KlassenDetailInhalt(
     onSchuelerOeffnen: (Long) -> Unit,
     onSchuelerAnlegen: (String, String, Geschlecht) -> Unit,
     onQuiz: () -> Unit,
+    onSitzplan: () -> Unit,
 ) {
     var dialogOffen by rememberSaveable { mutableStateOf(false) }
 
@@ -104,6 +108,11 @@ private fun KlassenDetailInhalt(
                     }
                 },
                 actions = {
+                    if (state.schueler.isNotEmpty()) {
+                        IconButton(onClick = onSitzplan) {
+                            Icon(Icons.Default.GridOn, contentDescription = stringResource(R.string.sitzplan_oeffnen))
+                        }
+                    }
                     if (state.schueler.any { it.fotoDatei != null }) {
                         TextButton(onClick = onQuiz) {
                             Icon(Icons.Default.School, contentDescription = null)
