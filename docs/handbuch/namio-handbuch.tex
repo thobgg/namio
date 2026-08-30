@@ -1,0 +1,177 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[ngerman]{babel}
+\usepackage{lmodern}
+\usepackage[margin=2.3cm]{geometry}
+\usepackage{graphicx}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{tcolorbox}
+\usepackage{hyperref}
+\hypersetup{colorlinks=true,linkcolor=black,urlcolor=blue!60!black}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+\newcommand{\ui}[1]{\textbf{#1}}
+\newcommand{\bild}[2]{\includegraphics[width=#1\textwidth,frame]{../screenshots/#2}}
+\usepackage[export]{adjustbox}
+
+\title{\Huge Namio\\[6pt]\large Namen der Schulklasse lernen -- Handbuch}
+\author{Version 0.20}
+\date{August 2026}
+
+\begin{document}
+\maketitle
+
+\begin{tcolorbox}[colback=red!5,colframe=red!60!black,title=Bitte zuerst lesen]
+Namio speichert Namen und Fotos von Kindern. Ob und wie du solche Daten erheben und auf einem
+privaten Gerät nutzen darfst, richtet sich nach DSGVO, Schulgesetz und den Vorgaben deiner Schule
+(z.\,B. Einwilligung der Eltern, dienstliches Gerät). \textbf{Das musst du selbst klären.}
+Namio ist ein privates Projekt ohne Gewähr; die Verantwortung für Nutzung, Gerätesperre, Sicherung
+und Löschung liegt bei dir. Die App speichert alles nur lokal und verschlüsselt und sendet nichts.
+\end{tcolorbox}
+
+\tableofcontents
+\newpage
+
+\section{Was Namio macht}
+Namio hilft dir, die Namen deiner Klassen zu lernen -- und zwar so, wie du sie im Klassenraum brauchst:
+Gesicht sehen, Namen wissen. Dafür gibt es fünf Quizformen, ein Lernsystem mit Wiederholung in kurzen
+Abständen (Leitner-Boxen) und einen Sitzplan, der selbst als Quiz dient.
+
+Grundsätze:
+\begin{itemize}[nosep]
+  \item \textbf{Kein Internet.} Die App hat keine Netzwerkberechtigung. Nichts verlässt das Gerät.
+  \item \textbf{Alles verschlüsselt.} Datenbank mit SQLCipher, Schlüssel im Android-Keystore, Fotos nur im
+        App-internen Speicher (sie tauchen nie in der Galerie auf).
+  \item \textbf{App-Sperre.} Beim Öffnen per Fingerabdruck, Gesicht oder Geräte-PIN.
+  \item \textbf{Echtes Löschen.} Klasse weg = Fotodateien weg.
+\end{itemize}
+
+\section{Installation und erster Start}
+\begin{enumerate}[nosep]
+  \item APK aus dem Store installieren (Obtainium erkennt Updates automatisch).
+  \item Beim ersten Start: Sperre bestätigen, Hinweis lesen und mit \ui{Verstanden} bestätigen.
+  \item Die Demoklasse \ui{7b} (24 Kinder mit Avataren, fertiger Sitzplan) ist zum Ausprobieren da.
+        Du kannst sie jederzeit löschen (\ui{⋮} an der Klasse); sie kommt nicht zurück.
+\end{enumerate}
+
+\section{Klassen}
+\begin{center}\bild{0.28}{klassen.png}\hspace{1em}\bild{0.28}{klasse.png}\end{center}
+\begin{itemize}[nosep]
+  \item \ui{+} legt eine Klasse an (Name, Schule, Schuljahr). Die Karte zeigt Schülerzahl und Lernfortschritt.
+  \item \ui{⋮} an der Karte: Klasse löschen -- samt Schülern, Fotos, Lernständen und Sitzplänen.
+  \item In der Klasse oben: \ui{CSV-Import}, \ui{Statistik}, \ui{Sitzplan}, \ui{Quiz}.
+\end{itemize}
+
+\section{Schüler und Fotos}
+\begin{center}\bild{0.28}{schueler.png}\hspace{1em}\bild{0.28}{avatare.png}\end{center}
+\ui{+} in der Klasse legt ein Kind an (Vorname, Nachname, Mädchen/Junge). Das Geschlecht steuert,
+welche Namen im Quiz als Ablenker taugen. Im Schülerdetail:
+\begin{itemize}[nosep]
+  \item \ui{Foto aufnehmen}: Sucher mit quadratischem Rahmen und Gesichtsoval, Frontkamera per Symbol.
+        Das Bild wird mittig quadratisch zugeschnitten und auf 800\,px verkleinert.
+  \item \ui{Aus Galerie}: Bild über den System-Bildwähler -- Namio bekommt nur dieses eine Bild.
+  \item \ui{Avatar wählen}: 35 Cartoon-Gesichter für Tests oder wenn kein Foto erlaubt ist.
+  \item \ui{Spitzname} wird, wenn gesetzt, im Raster und Sitzplan angezeigt und gilt beim Tippen als richtig.
+  \item Unten: \ui{Lernstand} pro Quizmodus (Box 1--5).
+\end{itemize}
+
+\subsection{CSV-Import}
+28 Namen abtippen will niemand. \ui{CSV-Import} (Symbol in der Klasse) liest Listen aus Untis oder Excel:
+Trennzeichen (Semikolon, Komma, Tab) und Zeichensatz (UTF-8 mit/ohne BOM, Windows-1252) werden
+erkannt, die Spaltenzuordnung (Vorname, Nachname, „Nachname, Vorname“ in einer Spalte, Geschlecht
+m/w) bestätigst du mit Vorschau. Kinder ohne Geschlechtsangabe bekommen die gewählte Vorgabe.
+
+\section{Quiz}
+\begin{center}\bild{0.28}{auswahl.png}\hspace{1em}\bild{0.28}{frage.png}\hspace{1em}\bild{0.28}{ergebnis.png}\end{center}
+\begin{tabular}{@{}p{4.2cm}p{10.5cm}@{}}
+\toprule
+Modus & Was passiert \\
+\midrule
+Foto $\to$ Name (Auswahl) & Foto oben, vier Namen. Der Einstieg. \\
+Foto $\to$ Name (Tippen) & Name eintippen. Tippfehler und fehlende Akzente werden toleriert (1 Fehler bei kurzen, 2 bei längeren Namen). Nur der Vorname zählt -- außer die Klasse hat zwei gleiche Vornamen. \\
+Name $\to$ Foto & Name oben, neun Gesichter. \\
+Sitzplan & „Wo sitzt …?“ -- auf den Platz tippen. Trainiert genau die Situation im Raum. \\
+Speedrun & 60 Sekunden, so viele wie möglich. Ohne Einfluss auf den Lernstand. \\
+\bottomrule
+\end{tabular}
+
+Ablenker (falsche Antworten) sind nie zufällig beliebig: zuerst Kinder, mit denen du das Ziel schon
+verwechselt hast, dann gleiche Anfangsbuchstaben, dann Zufall -- immer gleiches Geschlecht, immer
+dieselbe Klasse.
+
+\subsection{Das Lernsystem}
+Jedes Kind hat pro Modus eine Karte in einer von fünf Boxen. Richtig = eine Box höher, falsch = zurück
+auf Box~1 (und in derselben Runde noch einmal). Fälligkeiten: Box~1 sofort, Box~2 nach 10 Minuten,
+Box~3 nach 1 Tag, Box~4 nach 3 Tagen, Box~5 nach 7 Tagen. Eine Runde nimmt erst alle fälligen Karten,
+dann bis zu fünf neue (einstellbar). Ist nichts fällig, kannst du trotzdem üben.
+
+Nach der Runde: Trefferquote, Fehlerliste mit „verwechselt mit“ und \ui{Fehler wiederholen}.
+
+\subsection{Statistik}
+Pro Klasse und Modus: Verteilung der Boxen, Trefferquote der letzten Runden und die häufigsten
+Verwechslungspaare -- die Kinder, die du dir gezielt ansehen solltest.
+
+\section{Sitzplan}
+\begin{center}\bild{0.28}{sitzplan.png}\hspace{1em}\bild{0.28}{sitzplan_quiz.png}\end{center}
+Der Sitzplan ist frei: Tische mit 1--4 Plätzen, beliebig platziert und gedreht, Möbel (Pult, PC) als
+Beschriftung. Ein Plan startet aus einer Vorlage (Doppeltischreihen, U-Form, Gruppentische, je Kind
+ein Tisch) oder leer; auf Wunsch gleich mit allen Kindern der Reihe nach besetzt. Mehrere Pläne pro
+Klasse (Klassenraum, Fachraum, Prüfung), einer ist Standard und dient dem Quiz.
+
+\subsection{Ansehen (gesperrt)}
+Pläne mit Tischen öffnen \textbf{gesperrt} -- nichts verrutscht aus Versehen. Verfügbar sind:
+\ui{Würfel} (zufällige Person, ihr Platz blinkt), \ui{Blickrichtung} (vom Pult aus oder wie auf Papier),
+\ui{Mischen} (nach Rückfrage), Zoom (zwei Finger oder Lupen), \ui{⋮} $\to$ \ui{Als PDF speichern}.
+
+\subsection{Bearbeiten (Schloss antippen)}
+\begin{itemize}[nosep]
+  \item \textbf{Kind setzen/tauschen}: Kind in der Leiste oder auf einem Platz antippen, dann Ziel antippen.
+        Belegtes Ziel = Tausch. Oder ziehen.
+  \item \textbf{Tisch markieren}: Tisch antippen (bei belegtem Platz lange drücken). Werkzeugleiste:
+        $\pm$15°, $\pm$45°, Plätze +/$-$, Breite +/$-$, Duplizieren, Beschriften, Löschen.
+  \item \textbf{Mehrere Tische}: nacheinander markieren; gemeinsam ziehen, drehen (Buttons oder
+        Zwei-Finger-Drehung), ausrichten (Zeile, Spalte, Drehung, Abstand).
+  \item \textbf{Neuer Tisch}: Art unten wählen (Einzel, Zweier mit einem Kind, Doppel, Dreier), freie Fläche antippen.
+  \item \ui{Rückgängig} für die letzten 30 Schritte. \ui{⋮}: neuer Plan, Name/Raum/Einrasten, Plan kopieren, als Standard, löschen.
+\end{itemize}
+Tipp: Der Editor ist Tablet-Arbeit. Am Handy sind Ansehen, Auslosen, Mischen und das Sitzplan-Quiz
+bequem; der Plan ist dort automatisch so gezoomt, dass man scrollt statt zu schrumpfen.
+
+\section{Einstellungen und Daten}
+\begin{itemize}[nosep]
+  \item \ui{App-Sperre} an/aus (Standard an). Ohne Gerätesperre bleibt die App offen.
+  \item \ui{Sitzplan-Blickrichtung}, \ui{Neue Karten pro Runde} (1--15).
+  \item \ui{Exportieren}: alle Daten als Datei \texttt{namio-Datum.namio}, verschlüsselt mit einem Passwort
+        (AES-256, Passwort wird nirgends gespeichert). \ui{Importieren} ersetzt alle Daten auf dem Gerät --
+        so ziehst du vom Tablet aufs Handy um oder sicherst dich ab.
+  \item \ui{Alle Daten löschen}: Klassen, Fotos, Lernstände, Sitzpläne -- endgültig.
+  \item Zwischen Mitte Juni und Ende August erinnert Namio einmal, abgegebene Klassen zu löschen.
+\end{itemize}
+
+\section{Tipps aus der Praxis}
+\begin{itemize}[nosep]
+  \item Erst Fotos, dann Quiz: Ohne Foto kann ein Kind nicht abgefragt werden.
+  \item Montagmorgen: fünf Minuten \emph{Foto $\to$ Name (Auswahl)}, dann \emph{Sitzplan}.
+  \item Verwechslungspaare in der Statistik sind die beste Lernliste.
+  \item Am Schuljahresende exportieren (falls du etwas behalten willst) und dann löschen.
+\end{itemize}
+
+\section{Häufige Fragen}
+\textbf{Wo liegen die Fotos?} Nur im internen App-Speicher, verschlüsselt erreichbar nur für Namio. Nie in der Galerie.
+
+\textbf{Kann ich Fotos für alle Kinder auf einmal machen?} Aktuell pro Kind über das Schülerdetail. Eine
+„Fotorunde“ (Kamera bleibt offen, Namio zeigt das nächste Kind an) ist geplant.
+
+\textbf{Warum zeigt die Quizauswahl „Nichts fällig“?} Alle Karten sind in höheren Boxen. Üben geht trotzdem;
+fällig werden sie nach den Intervallen oben.
+
+\textbf{Was passiert bei Wechsel des Geräts?} Exportieren, Datei rüberkopieren (Dateimanager, NAS, USB), importieren.
+
+\textbf{Ist die App barrierefrei?} Bedienbar mit TalkBack und großer Schrift; Fotos werden mit Namen vorgelesen.
+
+\vfill
+\small Quelltext und Screenshots: \url{https://github.com/thobgg/namio}
+\end{document}
