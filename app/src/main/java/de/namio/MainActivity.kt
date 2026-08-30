@@ -10,6 +10,7 @@ import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK
 import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
 import androidx.biometric.BiometricPrompt
+import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.getValue
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
@@ -31,19 +32,24 @@ class MainActivity : FragmentActivity() {
         setContent {
             NamioTheme {
                 val gesperrt by sperre.gesperrt.collectAsStateWithLifecycle()
-                if (gesperrt) SperrBildschirm(onEntsperren = ::entsperren) else NamioNavHost()
+                // NavHost bleibt bestehen; die Sperre legt sich als Overlay darüber, damit Systemdialoge die Navigation nicht zurücksetzen.
+                Box {
+                    NamioNavHost()
+                    if (gesperrt) SperrBildschirm(onEntsperren = ::entsperren)
+                }
             }
         }
     }
 
     override fun onStart() {
         super.onStart()
+        sperre.beimStart()
         if (sperre.gesperrt.value) entsperren()
     }
 
     override fun onStop() {
         super.onStop()
-        sperre.sperren()
+        sperre.beimStop()
     }
 
     private var promptOffen = false
