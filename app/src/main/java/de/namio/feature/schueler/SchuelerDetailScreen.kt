@@ -17,6 +17,8 @@ import androidx.compose.ui.layout.ContentScale
 import coil3.compose.AsyncImage
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -100,7 +102,7 @@ fun SchuelerDetailScreen(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun SchuelerDetailInhalt(
     state: SchuelerDetailUiState,
@@ -159,7 +161,7 @@ private fun SchuelerDetailInhalt(
                     .clip(RoundedCornerShape(24.dp)),
             )
             Spacer(Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Button(onClick = onFotoAufnehmen) {
                     Icon(Icons.Default.PhotoCamera, contentDescription = null)
                     Spacer(Modifier.size(6.dp))
