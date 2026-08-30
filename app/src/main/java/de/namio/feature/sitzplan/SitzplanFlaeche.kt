@@ -1,0 +1,202 @@
+package de.namio.feature.sitzplan
+
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
+import de.namio.R
+import de.namio.core.media.FotoStore
+import de.namio.core.model.Blickrichtung
+import de.namio.core.model.Schueler
+import de.namio.core.model.Sitzplan
+import de.namio.core.model.Sitzplatz
+import de.namio.core.sitzplan.SitzplanLogik
+import de.namio.ui.components.SchuelerFoto
+import kotlin.math.roundToInt
+
+/** Farbliche Hervorhebung eines Platzes (Quiz-Feedback, Auswahl). */
+enum class PlatzMarkierung { KEINE, AUSGEWAEHLT, RICHTIG, FALSCH }
+
+/** Geometrie der gezeichneten Fläche, um Fingerpositionen in Raumkoordinaten umzurechnen. */
+data class FlaechenGeometrie(val breitePx: Float, val hoehePx: Float, val einheitPx: Float)
+
+/**
+ * Zeichnet einen Sitzplan als freie Fläche im Seitenverhältnis [Sitzplan.spalten]:[Sitzplan.reihen].
+ * Plätze werden an ihren normierten Mittelpunkten platziert und gedreht; die Tafel liegt je nach
+ * [blickrichtung] oben (von hinten) oder unten (von vorn).
+ */
+@Composable
+fun SitzplanFlaeche(
+    plan: Sitzplan,
+    plaetze: List<Sitzplatz>,
+    schuelerProId: Map<Long, Schueler>,
+    blickrichtung: Blickrichtung,
+    fotoStore: FotoStore,
+    modifier: Modifier = Modifier,
+    namenZeigen: Boolean = true,
+    rasterZeigen: Boolean = false,
+    markierung: (Sitzplatz) -> PlatzMarkierung = { PlatzMarkierung.KEINE },
+    onGeometrie: ((FlaechenGeometrie) -> Unit)? = null,
+    flaechenModifier: Modifier = Modifier,
+    platzModifier: (Sitzplatz) -> Modifier = { Modifier },
+) {
+    val tafelOben = blickrichtung == Blickrichtung.VON_HINTEN
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        if (tafelOben) Tafel()
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val breite = maxWidth
+            val einheit: Dp = breite / plan.spalten
+            val hoehe: Dp = einheit * plan.reihen
+            val dichte = LocalDensity.current
+            with(dichte) { onGeometrie?.invoke(FlaechenGeometrie(breite.toPx(), hoehe.toPx(), einheit.toPx())) }
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(hoehe)
+                    .background(MaterialTheme.colorScheme.surfaceContainerLow, RoundedCornerShape(8.dp))
+                    .then(flaechenModifier),
+            ) {
+                if (rasterZeigen) {
+                    val linie = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    Canvas(Modifier.fillMaxSize()) {
+                        val e = size.width / plan.spalten
+                        for (i in 1 until plan.spalten) drawLine(linie, Offset(i * e, 0f), Offset(i * e, size.height), 1f)
+                        for (j in 1 until plan.reihen) drawLine(linie, Offset(0f, j * e), Offset(size.width, j * e), 1f)
+                    }
+                }
+                val platzGroesse = einheit * 0.92f
+                plaetze.forEach { platz ->
+                    val a = SitzplanLogik.anzeige(platz, blickrichtung)
+                    val links = with(dichte) { (breite * a.x - platzGroesse / 2).toPx().roundToInt() }
+                    val oben = with(dichte) { (hoehe * a.y - platzGroesse / 2).toPx().roundToInt() }
+                    Platz(
+                        schueler = platz.schuelerId?.let(schuelerProId::get),
+                        beschriftung = platz.beschriftung,
+                        drehung = a.drehung,
+                        groesse = platzGroesse,
+                        markierung = markierung(platz),
+                        namenZeigen = namenZeigen,
+                        fotoStore = fotoStore,
+                        modifier = Modifier
+                            .offset { IntOffset(links, oben) }
+                            .then(platzModifier(platz)),
+                    )
+                }
+            }
+        }
+        if (!tafelOben) Tafel()
+    }
+}
+
+@Composable
+private fun Tafel() {
+    Box(
+        Modifier
+            .padding(vertical = 6.dp)
+            .fillMaxWidth(0.7f)
+            .background(Color(0xFF2F4F3F), RoundedCornerShape(6.dp))
+            .padding(vertical = 5.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(stringResource(R.string.sitzplan_tafel), color = Color.White, style = MaterialTheme.typography.labelLarge)
+    }
+}
+
+@Composable
+private fun Platz(
+    schueler: Schueler?,
+    beschriftung: String?,
+    drehung: Float,
+    groesse: Dp,
+    markierung: PlatzMarkierung,
+    namenZeigen: Boolean,
+    fotoStore: FotoStore,
+    modifier: Modifier,
+) {
+    val rahmen = when (markierung) {
+        PlatzMarkierung.KEINE -> MaterialTheme.colorScheme.outlineVariant
+        PlatzMarkierung.AUSGEWAEHLT -> MaterialTheme.colorScheme.primary
+        PlatzMarkierung.RICHTIG -> Color(0xFF2E7D32)
+        PlatzMarkierung.FALSCH -> MaterialTheme.colorScheme.error
+    }
+    val dicke = if (markierung == PlatzMarkierung.KEINE) 1.dp else 3.dp
+    val form = RoundedCornerShape(groesse / 8)
+    val zeigeName = namenZeigen && groesse >= 56.dp
+    Box(
+        modifier
+            .size(groesse)
+            .graphicsLayer { rotationZ = drehung }
+            .clip(form)
+            .background(
+                when {
+                    schueler != null -> MaterialTheme.colorScheme.surface
+                    beschriftung != null -> MaterialTheme.colorScheme.secondaryContainer
+                    else -> MaterialTheme.colorScheme.surfaceVariant
+                },
+            )
+            .border(dicke, rahmen, form),
+        contentAlignment = Alignment.Center,
+    ) {
+        // Tischkante: die Seite, in die der Platz „blickt“ (bei 0° oben, Richtung Tafel)
+        if (beschriftung == null) Box(Modifier.fillMaxWidth(0.7f).height(3.dp).align(Alignment.TopCenter).offset(y = groesse * 0.06f).background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)))
+        // Inhalt gegenrotieren, damit Gesichter und Namen immer aufrecht stehen
+        Box(Modifier.fillMaxSize().graphicsLayer { rotationZ = -drehung }, contentAlignment = Alignment.Center) {
+            if (schueler != null) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    SchuelerFoto(
+                        datei = schueler.fotoDatei?.let(fotoStore::datei),
+                        beschreibung = schueler.vollerName,
+                        modifier = Modifier.size(if (zeigeName) groesse * 0.58f else groesse * 0.78f).clip(RoundedCornerShape(6.dp)),
+                    )
+                    if (zeigeName) {
+                        Text(
+                            schueler.anzeigeName,
+                            style = MaterialTheme.typography.labelSmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(horizontal = 2.dp).fillMaxWidth(),
+                        )
+                    }
+                }
+            } else if (beschriftung != null) {
+                Text(
+                    beschriftung,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(4.dp),
+                )
+            } else {
+                Box(Modifier.size(groesse * 0.35f).clip(RoundedCornerShape(4.dp)).background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)))
+            }
+        }
+    }
+}

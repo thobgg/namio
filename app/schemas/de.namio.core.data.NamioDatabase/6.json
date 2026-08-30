@@ -1,0 +1,617 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 6,
+    "identityHash": "75c8bfee2c0d4a8a2303e2f07d39dead",
+    "entities": [
+      {
+        "tableName": "klasse",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `schule` TEXT NOT NULL, `jahrgang` TEXT NOT NULL, `erstelltAm` INTEGER NOT NULL, `archiviert` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "schule",
+            "columnName": "schule",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "jahrgang",
+            "columnName": "jahrgang",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "erstelltAm",
+            "columnName": "erstelltAm",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "archiviert",
+            "columnName": "archiviert",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "schueler",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `klasseId` INTEGER NOT NULL, `vorname` TEXT NOT NULL, `nachname` TEXT NOT NULL, `spitzname` TEXT NOT NULL, `fotoDatei` TEXT, `notiz` TEXT NOT NULL, `sortIndex` INTEGER NOT NULL, `geschlecht` TEXT NOT NULL DEFAULT 'MAEDCHEN', FOREIGN KEY(`klasseId`) REFERENCES `klasse`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "klasseId",
+            "columnName": "klasseId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "vorname",
+            "columnName": "vorname",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nachname",
+            "columnName": "nachname",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "spitzname",
+            "columnName": "spitzname",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fotoDatei",
+            "columnName": "fotoDatei",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "notiz",
+            "columnName": "notiz",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sortIndex",
+            "columnName": "sortIndex",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "geschlecht",
+            "columnName": "geschlecht",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'MAEDCHEN'"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_schueler_klasseId",
+            "unique": false,
+            "columnNames": [
+              "klasseId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_schueler_klasseId` ON `${TABLE_NAME}` (`klasseId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "klasse",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "klasseId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "lernkarte",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `schuelerId` INTEGER NOT NULL, `modus` TEXT NOT NULL, `box` INTEGER NOT NULL, `faelligAm` INTEGER NOT NULL, `serieRichtig` INTEGER NOT NULL, `letzteAntwortAm` INTEGER, FOREIGN KEY(`schuelerId`) REFERENCES `schueler`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "schuelerId",
+            "columnName": "schuelerId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "modus",
+            "columnName": "modus",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "box",
+            "columnName": "box",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "faelligAm",
+            "columnName": "faelligAm",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "serieRichtig",
+            "columnName": "serieRichtig",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "letzteAntwortAm",
+            "columnName": "letzteAntwortAm",
+            "affinity": "INTEGER",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_lernkarte_schuelerId_modus",
+            "unique": true,
+            "columnNames": [
+              "schuelerId",
+              "modus"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_lernkarte_schuelerId_modus` ON `${TABLE_NAME}` (`schuelerId`, `modus`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "schueler",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "schuelerId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "quiz_session",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `klasseId` INTEGER NOT NULL, `modus` TEXT NOT NULL, `startedAt` INTEGER NOT NULL, `endedAt` INTEGER, `anzahlRichtig` INTEGER NOT NULL, `anzahlFalsch` INTEGER NOT NULL, FOREIGN KEY(`klasseId`) REFERENCES `klasse`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "klasseId",
+            "columnName": "klasseId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "modus",
+            "columnName": "modus",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startedAt",
+            "columnName": "startedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "endedAt",
+            "columnName": "endedAt",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "anzahlRichtig",
+            "columnName": "anzahlRichtig",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "anzahlFalsch",
+            "columnName": "anzahlFalsch",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_quiz_session_klasseId",
+            "unique": false,
+            "columnNames": [
+              "klasseId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_quiz_session_klasseId` ON `${TABLE_NAME}` (`klasseId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "klasse",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "klasseId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "quiz_antwort",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `sessionId` INTEGER NOT NULL, `schuelerId` INTEGER NOT NULL, `verwechseltMit` INTEGER, `korrekt` INTEGER NOT NULL, `dauerMs` INTEGER NOT NULL, `zeitpunkt` INTEGER NOT NULL, FOREIGN KEY(`sessionId`) REFERENCES `quiz_session`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`schuelerId`) REFERENCES `schueler`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`verwechseltMit`) REFERENCES `schueler`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionId",
+            "columnName": "sessionId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "schuelerId",
+            "columnName": "schuelerId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "verwechseltMit",
+            "columnName": "verwechseltMit",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "korrekt",
+            "columnName": "korrekt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dauerMs",
+            "columnName": "dauerMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "zeitpunkt",
+            "columnName": "zeitpunkt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_quiz_antwort_sessionId",
+            "unique": false,
+            "columnNames": [
+              "sessionId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_quiz_antwort_sessionId` ON `${TABLE_NAME}` (`sessionId`)"
+          },
+          {
+            "name": "index_quiz_antwort_schuelerId",
+            "unique": false,
+            "columnNames": [
+              "schuelerId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_quiz_antwort_schuelerId` ON `${TABLE_NAME}` (`schuelerId`)"
+          },
+          {
+            "name": "index_quiz_antwort_verwechseltMit",
+            "unique": false,
+            "columnNames": [
+              "verwechseltMit"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_quiz_antwort_verwechseltMit` ON `${TABLE_NAME}` (`verwechseltMit`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "quiz_session",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "sessionId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "schueler",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "schuelerId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "schueler",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "verwechseltMit"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "sitzplan",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `klasseId` INTEGER NOT NULL, `name` TEXT NOT NULL, `spalten` INTEGER NOT NULL, `reihen` INTEGER NOT NULL, `istStandard` INTEGER NOT NULL, `einrasten` INTEGER NOT NULL DEFAULT 1, FOREIGN KEY(`klasseId`) REFERENCES `klasse`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "klasseId",
+            "columnName": "klasseId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "spalten",
+            "columnName": "spalten",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reihen",
+            "columnName": "reihen",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "istStandard",
+            "columnName": "istStandard",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "einrasten",
+            "columnName": "einrasten",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "1"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_sitzplan_klasseId",
+            "unique": false,
+            "columnNames": [
+              "klasseId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_sitzplan_klasseId` ON `${TABLE_NAME}` (`klasseId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "klasse",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "klasseId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "sitzplatz",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `sitzplanId` INTEGER NOT NULL, `schuelerId` INTEGER, `x` REAL NOT NULL, `y` REAL NOT NULL, `drehung` REAL NOT NULL, `beschriftung` TEXT, FOREIGN KEY(`sitzplanId`) REFERENCES `sitzplan`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`schuelerId`) REFERENCES `schueler`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sitzplanId",
+            "columnName": "sitzplanId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "schuelerId",
+            "columnName": "schuelerId",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "x",
+            "columnName": "x",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "y",
+            "columnName": "y",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "drehung",
+            "columnName": "drehung",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "beschriftung",
+            "columnName": "beschriftung",
+            "affinity": "TEXT",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_sitzplatz_sitzplanId_schuelerId",
+            "unique": true,
+            "columnNames": [
+              "sitzplanId",
+              "schuelerId"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_sitzplatz_sitzplanId_schuelerId` ON `${TABLE_NAME}` (`sitzplanId`, `schuelerId`)"
+          },
+          {
+            "name": "index_sitzplatz_sitzplanId",
+            "unique": false,
+            "columnNames": [
+              "sitzplanId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_sitzplatz_sitzplanId` ON `${TABLE_NAME}` (`sitzplanId`)"
+          },
+          {
+            "name": "index_sitzplatz_schuelerId",
+            "unique": false,
+            "columnNames": [
+              "schuelerId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_sitzplatz_schuelerId` ON `${TABLE_NAME}` (`schuelerId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "sitzplan",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "sitzplanId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "schueler",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "schuelerId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '75c8bfee2c0d4a8a2303e2f07d39dead')"
+    ]
+  }
+}

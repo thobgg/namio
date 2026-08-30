@@ -1,8 +1,8 @@
 package de.namio.core.sitzplan
 
 import de.namio.core.model.Blickrichtung
-import de.namio.core.model.Position
 import de.namio.core.model.Sitzplatz
+import de.namio.core.model.SitzplanVorlage
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -10,83 +10,161 @@ import org.junit.jupiter.api.Test
 import kotlin.random.Random
 
 class SitzplanLogikTest {
-    private fun p(id: Long, schueler: Long?, spalte: Int, reihe: Int) = Sitzplatz(id, 1, schueler, spalte, reihe)
-    private fun List<Sitzplatz>.bei(spalte: Int, reihe: Int) = firstOrNull { it.spalte == spalte && it.reihe == reihe }
+    private val S = 12
+    private val R = 9
+    private fun p(id: Long, schueler: Long?, x: Float, y: Float, d: Float = 0f) = Sitzplatz(id, 1, schueler, x, y, d)
+    private fun List<Sitzplatz>.von(schueler: Long) = first { it.schuelerId == schueler }
 
     @Test
-    fun `neuer schueler auf freies feld erzeugt platz`() {
-        val neu = SitzplanLogik.setzen(emptyList(), 1, schuelerId = 7, spalte = 2, reihe = 1)
-        assertEquals(listOf(Sitzplatz(0, 1, 7, 2, 1)), neu)
+    fun `ablegen im freien raum erzeugt platz und rastet ein`() {
+        val neu = SitzplanLogik.ablegen(emptyList(), 1, 7, 0.26f, 0.31f, S, R, einrasten = true)
+        assertEquals(1, neu.size)
+        assertEquals(0.25f, neu[0].x, 1e-4f)
+        assertEquals(0.3333f, neu[0].y, 1e-3f)
+        assertEquals(7L, neu[0].schuelerId)
     }
 
     @Test
-    fun `schueler wandert und laesst leeren stuhl zurueck`() {
-        val start = listOf(p(1, 7, 0, 0))
-        val neu = SitzplanLogik.setzen(start, 1, 7, 3, 3)
-        assertNull(neu.bei(0, 0)?.schuelerId)
-        assertEquals(7L, neu.bei(3, 3)?.schuelerId)
+    fun `ablegen ohne einrasten behaelt position`() {
+        val neu = SitzplanLogik.ablegen(emptyList(), 1, 7, 0.26f, 0.31f, S, R, einrasten = false)
+        assertEquals(0.26f, neu[0].x, 1e-6f)
+    }
+
+    @Test
+    fun `ablegen auf belegten platz tauscht`() {
+        val start = listOf(p(1, 7, 0.2f, 0.2f), p(2, 8, 0.6f, 0.2f))
+        val neu = SitzplanLogik.ablegen(start, 1, 7, 0.61f, 0.21f, S, R, true)
+        assertEquals(8L, neu.first { it.id == 1L }.schuelerId)
+        assertEquals(7L, neu.first { it.id == 2L }.schuelerId)
+    }
+
+    @Test
+    fun `ablegen auf leeren stuhl belegt ihn und laesst alten stuhl leer`() {
+        val start = listOf(p(1, 7, 0.2f, 0.2f), p(2, null, 0.6f, 0.2f))
+        val neu = SitzplanLogik.ablegen(start, 1, 7, 0.6f, 0.2f, S, R, true)
+        assertNull(neu.first { it.id == 1L }.schuelerId)
+        assertEquals(7L, neu.first { it.id == 2L }.schuelerId)
+    }
+
+    @Test
+    fun `sitzender schueler wandert samt platz in freien raum`() {
+        val start = listOf(p(1, 7, 0.2f, 0.2f))
+        val neu = SitzplanLogik.ablegen(start, 1, 7, 0.8f, 0.8f, S, R, false)
+        assertEquals(1, neu.size)
+        assertEquals(0.8f, neu[0].x, 1e-6f)
+    }
+
+    @Test
+    fun `platzBei findet nur im trefferradius`() {
+        val plaetze = listOf(p(1, 7, 0.5f, 0.5f))
+        assertEquals(1L, SitzplanLogik.platzBei(plaetze, 0.5f + 0.4f / S, 0.5f, S, R)?.id)
+        assertNull(SitzplanLogik.platzBei(plaetze, 0.5f + 1.2f / S, 0.5f, S, R))
+    }
+
+    @Test
+    fun `drehen bleibt im bereich 0 bis 360`() {
+        val neu = SitzplanLogik.drehen(listOf(p(1, null, 0.5f, 0.5f, 350f)), 1, 15f)
+        assertEquals(5f, neu[0].drehung, 1e-4f)
+        val zurueck = SitzplanLogik.drehen(neu, 1, -15f)
+        assertEquals(350f, zurueck[0].drehung, 1e-4f)
+    }
+
+    @Test
+    fun `partnerplatz liegt rechts in blickrichtung des tisches`() {
+        val neu = SitzplanLogik.partnerplatz(listOf(p(1, 7, 0.5f, 0.5f, 0f)), 1, S, R)
         assertEquals(2, neu.size)
+        assertEquals(0.5f + 1f / S, neu[1].x, 1e-4f)
+        assertEquals(0.5f, neu[1].y, 1e-4f)
+        val gedreht = SitzplanLogik.partnerplatz(listOf(p(1, 7, 0.5f, 0.5f, 90f)), 1, S, R)
+        assertEquals(0.5f, gedreht[1].x, 1e-4f)
+        assertEquals(0.5f + 1f / R, gedreht[1].y, 1e-4f)
     }
 
     @Test
-    fun `belegtes ziel tauscht die beiden`() {
-        val start = listOf(p(1, 7, 0, 0), p(2, 8, 1, 0))
-        val neu = SitzplanLogik.setzen(start, 1, 7, 1, 0)
-        assertEquals(8L, neu.bei(0, 0)?.schuelerId)
-        assertEquals(7L, neu.bei(1, 0)?.schuelerId)
-        assertEquals(2, neu.size)
-        assertEquals(setOf(1L, 2L), neu.map { it.id }.toSet())
+    fun `partnerplatz nicht doppelt`() {
+        val start = listOf(p(1, 7, 0.5f, 0.5f), p(2, null, 0.5f + 1f / S, 0.5f))
+        assertEquals(start, SitzplanLogik.partnerplatz(start, 1, S, R))
     }
 
     @Test
-    fun `leeren stuhl belegen behaelt platz id`() {
-        val start = listOf(p(5, null, 2, 2))
-        val neu = SitzplanLogik.setzen(start, 1, 9, 2, 2)
-        assertEquals(listOf(Sitzplatz(5, 1, 9, 2, 2)), neu)
+    fun `einrasten haelt den platz im raum`() {
+        val (x, y) = SitzplanLogik.einrasten(1.2f, -0.3f, S, R)
+        assertEquals(1f - 0.5f / S, x, 1e-4f)
+        assertEquals(0.5f / R, y, 1e-4f)
     }
 
     @Test
-    fun `auf eigenen platz setzen aendert nichts`() {
-        val start = listOf(p(1, 7, 0, 0))
-        assertEquals(start, SitzplanLogik.setzen(start, 1, 7, 0, 0))
-    }
-
-    @Test
-    fun `entfernen laesst stuhl stehen`() {
-        val neu = SitzplanLogik.entfernen(listOf(p(1, 7, 0, 0), p(2, 8, 1, 0)), 7)
-        assertNull(neu.bei(0, 0)?.schuelerId)
-        assertEquals(8L, neu.bei(1, 0)?.schuelerId)
-    }
-
-    @Test
-    fun `mischen permutiert nur belegte plaetze`() {
-        val start = listOf(p(1, 7, 0, 0), p(2, 8, 1, 0), p(3, null, 2, 0), p(4, 9, 3, 0))
-        val neu = SitzplanLogik.mischen(start, Random(3))
+    fun `mischen permutiert nur belegte`() {
+        val start = listOf(p(1, 7, 0.1f, 0.1f), p(2, 8, 0.3f, 0.1f), p(3, null, 0.5f, 0.1f), p(4, 9, 0.7f, 0.1f))
+        val neu = SitzplanLogik.mischen(start, Random(5))
         assertEquals(setOf(7L, 8L, 9L), neu.mapNotNull { it.schuelerId }.toSet())
-        assertNull(neu.bei(2, 0)?.schuelerId)
-        assertEquals(start.map { it.id }, neu.map { it.id })
+        assertNull(neu.first { it.id == 3L }.schuelerId)
     }
 
     @Test
-    fun `ausserhalb findet plaetze jenseits des rasters`() {
-        val plaetze = listOf(p(1, 7, 0, 0), p(2, 8, 5, 0), p(3, 9, 0, 4))
-        assertEquals(listOf(2L, 3L), SitzplanLogik.ausserhalb(plaetze, spalten = 5, reihen = 4).map { it.id })
+    fun `entfernen und loeschen`() {
+        val start = listOf(p(1, 7, 0.1f, 0.1f))
+        assertNull(SitzplanLogik.entfernen(start, 7)[0].schuelerId)
+        assertTrue(SitzplanLogik.platzLoeschen(start, 1).isEmpty())
     }
 
     @Test
-    fun `von hinten ist identitaet von vorn ist drehung`() {
-        val pos = Position(0, 0)
-        assertEquals(pos, SitzplanLogik.anzeigePosition(pos, 6, 4, Blickrichtung.VON_HINTEN))
-        assertEquals(Position(5, 3), SitzplanLogik.anzeigePosition(pos, 6, 4, Blickrichtung.VON_VORN))
-        val zurueck = SitzplanLogik.modellPosition(Position(5, 3), 6, 4, Blickrichtung.VON_VORN)
-        assertEquals(pos, zurueck)
+    fun `anzeige von vorn dreht um 180 grad und ist selbstinvers`() {
+        val a = SitzplanLogik.anzeige(p(1, null, 0.2f, 0.3f, 30f), Blickrichtung.VON_VORN)
+        assertEquals(0.8f, a.x, 1e-6f)
+        assertEquals(0.7f, a.y, 1e-6f)
+        assertEquals(210f, a.drehung, 1e-6f)
+        val (mx, my) = SitzplanLogik.modellKoordinate(a.x, a.y, Blickrichtung.VON_VORN)
+        assertEquals(0.2f, mx, 1e-6f)
+        assertEquals(0.3f, my, 1e-6f)
+        assertEquals(p(1, null, 0.2f, 0.3f), SitzplanLogik.anzeige(p(1, null, 0.2f, 0.3f), Blickrichtung.VON_HINTEN))
     }
 
     @Test
-    fun `drehung ist selbstinvers`() {
-        for (s in 0 until 7) for (r in 0 until 5) {
-            val a = SitzplanLogik.anzeigePosition(Position(s, r), 7, 5, Blickrichtung.VON_VORN)
-            assertTrue(SitzplanLogik.anzeigePosition(a, 7, 5, Blickrichtung.VON_VORN) == Position(s, r))
+    fun `vorlage doppeltischreihen fuer 12x9 hat 4 tische in 4 reihen`() {
+        val plaetze = SitzplanLogik.vorlage(SitzplanVorlage.DOPPELTISCH_REIHEN, 1, S, R, (1L..24L).toList())
+        assertEquals(32, plaetze.size)
+        assertEquals(24, plaetze.count { it.schuelerId != null })
+        assertEquals(1L, plaetze[0].schuelerId)
+        assertTrue(plaetze.all { it.x in 0f..1f && it.y in 0f..1f })
+        // Partner eines Doppeltischs sind genau eine Einheit auseinander
+        assertEquals(1f / S, plaetze[1].x - plaetze[0].x, 1e-4f)
+    }
+
+    @Test
+    fun `vorlagen u-form und gruppen liegen im raum`() {
+        for (v in listOf(SitzplanVorlage.U_FORM, SitzplanVorlage.GRUPPENTISCHE)) {
+            val plaetze = SitzplanLogik.vorlage(v, 1, S, R, emptyList())
+            assertTrue(plaetze.isNotEmpty())
+            assertTrue(plaetze.all { it.x in 0f..1f && it.y in 0f..1f && it.schuelerId == null })
         }
+        assertTrue(SitzplanLogik.vorlage(SitzplanVorlage.LEER, 1, S, R, listOf(1)).isEmpty())
+    }
+}
+
+class MoebelTest {
+    private fun p(id: Long, schueler: Long?, x: Float, y: Float, b: String? = null) = Sitzplatz(id, 1, schueler, x, y, 0f, b)
+
+    @Test
+    fun `beschriften macht moebel und leerer text wieder stuhl`() {
+        val m = SitzplanLogik.beschriften(listOf(p(1, null, 0.5f, 0.5f)), 1, " Pult ")
+        assertEquals("Pult", m[0].beschriftung)
+        assertTrue(m[0].istMoebel)
+        assertNull(SitzplanLogik.beschriften(m, 1, "  ")[0].beschriftung)
+    }
+
+    @Test
+    fun `belegter platz laesst sich nicht beschriften`() {
+        val m = SitzplanLogik.beschriften(listOf(p(1, 7, 0.5f, 0.5f)), 1, "Pult")
+        assertNull(m[0].beschriftung)
+    }
+
+    @Test
+    fun `moebel ist kein ablageziel`() {
+        val start = listOf(p(1, null, 0.5f, 0.5f, "PC"))
+        assertNull(SitzplanLogik.platzBei(start, 0.5f, 0.5f, 12, 9))
+        val neu = SitzplanLogik.ablegen(start, 1, 7, 0.5f, 0.5f, 12, 9, einrasten = false)
+        assertEquals(2, neu.size)
+        assertEquals("PC", neu[0].beschriftung)
     }
 }

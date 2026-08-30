@@ -10,6 +10,7 @@ import de.namio.core.media.FotoStore
 import de.namio.core.model.Geschlecht
 import de.namio.core.model.Geschlecht.JUNGE
 import de.namio.core.model.Geschlecht.MAEDCHEN
+import de.namio.core.model.SitzplanVorlage
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -23,6 +24,7 @@ class DemoDaten @Inject constructor(
     private val klassenRepository: KlassenRepository,
     private val schuelerDao: SchuelerDao,
     private val fotoStore: FotoStore,
+    private val sitzplanRepository: SitzplanRepository,
     private val dataStore: DataStore<Preferences>,
 ) {
     private data class Demo(val vorname: String, val nachname: String, val geschlecht: Geschlecht, val avatar: Int)
@@ -59,9 +61,10 @@ class DemoDaten @Inject constructor(
         val prefs = dataStore.data.first()
         if (prefs[DEMO_ANGELEGT] == true) return
         val klasseId = klassenRepository.anlegen(name = "7b", schule = "Demoklasse", jahrgang = "")
+        val ids = mutableListOf<Long>()
         schueler.forEachIndexed { index, demo ->
             val foto = runCatching { fotoStore.speichereAvatar("avatar_%02d.jpg".format(demo.avatar)) }.getOrNull()
-            schuelerDao.insert(
+            ids += schuelerDao.insert(
                 SchuelerEntity(
                     klasseId = klasseId,
                     vorname = demo.vorname,
@@ -72,6 +75,14 @@ class DemoDaten @Inject constructor(
                 ),
             )
         }
+        sitzplanRepository.anlegen(
+            klasseId = klasseId,
+            name = "Klassenraum",
+            spalten = SitzplanRepository.STANDARD_SPALTEN,
+            reihen = SitzplanRepository.STANDARD_REIHEN,
+            vorlage = SitzplanVorlage.DOPPELTISCH_REIHEN,
+            schuelerIds = ids,
+        )
         dataStore.edit { it[DEMO_ANGELEGT] = true }
     }
 

@@ -34,7 +34,7 @@ import de.namio.core.data.entity.SitzplatzEntity
         SitzplanEntity::class,
         SitzplatzEntity::class,
     ],
-    version = 4,
+    version = 6,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -98,6 +98,72 @@ abstract class NamioDatabase : RoomDatabase() {
             }
         }
 
-        val ALLE_MIGRATIONEN = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+        /**
+         * v5: frei positionierbare, drehbare Plätze. Rasterkoordinaten werden in normierte
+         * Mittelpunkte umgerechnet; die Doppeltisch-Option weicht dem Einrasten.
+         */
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE sitzplan_neu (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        klasseId INTEGER NOT NULL,
+                        name TEXT NOT NULL,
+                        spalten INTEGER NOT NULL,
+                        reihen INTEGER NOT NULL,
+                        istStandard INTEGER NOT NULL,
+                        einrasten INTEGER NOT NULL DEFAULT 1,
+                        FOREIGN KEY(klasseId) REFERENCES klasse(id) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    """
+                    INSERT INTO sitzplan_neu (id, klasseId, name, spalten, reihen, istStandard, einrasten)
+                    SELECT id, klasseId, name, MAX(spalten, 4), MAX(reihen, 3), istStandard, 1 FROM sitzplan
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    """
+                    CREATE TABLE sitzplatz_neu (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        sitzplanId INTEGER NOT NULL,
+                        schuelerId INTEGER,
+                        x REAL NOT NULL,
+                        y REAL NOT NULL,
+                        drehung REAL NOT NULL DEFAULT 0,
+                        FOREIGN KEY(sitzplanId) REFERENCES sitzplan(id) ON UPDATE NO ACTION ON DELETE CASCADE,
+                        FOREIGN KEY(schuelerId) REFERENCES schueler(id) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    """
+                    INSERT INTO sitzplatz_neu (id, sitzplanId, schuelerId, x, y, drehung)
+                    SELECT p.id, p.sitzplanId, p.schuelerId,
+                        (p.spalte + 0.5) / MAX(s.spalten, 4), (p.reihe + 0.5) / MAX(s.reihen, 3), 0
+                    FROM sitzplatz p JOIN sitzplan s ON s.id = p.sitzplanId
+                    """.trimIndent(),
+                )
+                db.execSQL("DROP TABLE sitzplatz")
+                db.execSQL("DROP TABLE sitzplan")
+                db.execSQL("ALTER TABLE sitzplan_neu RENAME TO sitzplan")
+                db.execSQL("ALTER TABLE sitzplatz_neu RENAME TO sitzplatz")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_sitzplan_klasseId ON sitzplan(klasseId)")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_sitzplatz_sitzplanId_schuelerId ON sitzplatz(sitzplanId, schuelerId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_sitzplatz_sitzplanId ON sitzplatz(sitzplanId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_sitzplatz_schuelerId ON sitzplatz(schuelerId)")
+            }
+        }
+
+        /** v6: Beschriftung für Möbel im Sitzplan (Pult, PC …). */
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE sitzplatz ADD COLUMN beschriftung TEXT")
+            }
+        }
+
+        val ALLE_MIGRATIONEN = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
     }
 }

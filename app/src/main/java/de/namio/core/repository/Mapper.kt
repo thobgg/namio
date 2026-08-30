@@ -65,6 +65,6 @@ internal fun Lernkarte.zuEntity() = LernkarteEntity(
     letzteAntwortAm = letzteAntwortAm?.toEpochMilli(),
 )
 
-internal fun SitzplanEntity.zuModell() = Sitzplan(id, klasseId, name, spalten, reihen, istStandard, doppeltische)
-internal fun SitzplatzEntity.zuModell() = Sitzplatz(id, sitzplanId, schuelerId, spalte, reihe)
-internal fun Sitzplatz.zuEntity() = SitzplatzEntity(id, sitzplanId, schuelerId, spalte, reihe)
+internal fun SitzplanEntity.zuModell() = Sitzplan(id, klasseId, name, spalten, reihen, istStandard, einrasten)
+internal fun SitzplatzEntity.zuModell() = Sitzplatz(id, sitzplanId, schuelerId, x, y, drehung, beschriftung)
+internal fun Sitzplatz.zuEntity() = SitzplatzEntity(id, sitzplanId, schuelerId, x, y, drehung, beschriftung)

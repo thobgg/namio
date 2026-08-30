@@ -138,11 +138,13 @@ data class SitzplanEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val klasseId: Long,
     val name: String,
+    /** Raumbreite in Rastereinheiten (eine Einheit = ein Sitzplatz). */
     val spalten: Int,
+    /** Raumtiefe in Rastereinheiten. */
     val reihen: Int,
     val istStandard: Boolean = false,
-    /** Doppeltische: nach jeder zweiten Spalte ein Gang (nur Darstellung). */
-    @ColumnInfo(defaultValue = "1") val doppeltische: Boolean = true,
+    /** Plätze beim Verschieben am halben Raster einrasten. */
+    @ColumnInfo(defaultValue = "1") val einrasten: Boolean = true,
 )
 
 @Entity(
@@ -162,8 +164,8 @@ data class SitzplanEntity(
         ),
     ],
     indices = [
-        Index(value = ["sitzplanId", "spalte", "reihe"], unique = true),
         Index(value = ["sitzplanId", "schuelerId"], unique = true),
+        Index("sitzplanId"),
         Index("schuelerId"),
     ],
 )
@@ -172,8 +174,14 @@ data class SitzplatzEntity(
     val sitzplanId: Long,
     /** null = leerer Stuhl. */
     val schuelerId: Long? = null,
-    val spalte: Int,
-    val reihe: Int,
+    /** Mittelpunkt, normiert 0–1 auf die Raumbreite. */
+    val x: Float,
+    /** Mittelpunkt, normiert 0–1 auf die Raumtiefe. */
+    val y: Float,
+    /** Drehung in Grad, im Uhrzeigersinn. */
+    val drehung: Float = 0f,
+    /** Gesetzt bei Möbeln ohne Schüler (Pult, PC, Schrank …). */
+    val beschriftung: String? = null,
 )
 
 /** Klasse mit Kennzahlen für die Liste (Abfrageergebnis, keine Tabelle). */

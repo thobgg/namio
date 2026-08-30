@@ -39,9 +39,10 @@ Die App verarbeitet Fotos von Minderjährigen. Deshalb gelten harte Regeln, kein
 - Deutsch und Englisch
 
 **Sitzplan**
-- Raster mit Doppeltischen und Gängen, leere Stühle für U-Form und Gruppentische
-- Drag & Drop oder Antippen, Sitzordnung mischen, mehrere Pläne pro Klasse
-- Blickrichtung umschaltbar: von vorn (Tafel beim Lehrer) oder wie auf dem Papier
+- Frei positionierbare, drehbare Plätze – schräge Doppeltische, U-Form, Gruppentische, alles was der Raum hergibt
+- Vorlagen zum Start (Doppeltischreihen, U-Form, Gruppentische), Partnerplatz mit einem Tipp, Möbel wie Pult und PC als Beschriftung
+- Drag & Drop oder Antippen, Einrasten am Raster, Sitzordnung mischen, mehrere Pläne pro Klasse
+- Blickrichtung umschaltbar: vom Lehrerpult aus oder wie auf dem Papier
 
 **Quiz**
 - Modus *Foto → Name*: Foto oben, vier Namen zur Auswahl

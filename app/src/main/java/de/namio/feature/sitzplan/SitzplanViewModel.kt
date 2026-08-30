@@ -9,6 +9,7 @@ import de.namio.core.model.Blickrichtung
 import de.namio.core.model.Klasse
 import de.namio.core.model.Schueler
 import de.namio.core.model.Sitzplan
+import de.namio.core.model.SitzplanVorlage
 import de.namio.core.model.Sitzplatz
 import de.namio.core.repository.EinstellungenRepository
 import de.namio.core.repository.KlassenRepository
@@ -73,46 +74,32 @@ class SitzplanViewModel @Inject constructor(
         SitzplanUiState(klasse, plaene, aktiv, plaetze, schueler, blick, laedt = false)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SitzplanUiState())
 
+    private inline fun mitPlan(block: (Long) -> Unit) { uiState.value.aktiv?.let { block(it.id) } }
+
     fun planWaehlen(id: Long) { gewaehltePlanId.value = id }
 
-    fun planAnlegen(name: String, spalten: Int, reihen: Int, doppeltische: Boolean) {
-        viewModelScope.launch { gewaehltePlanId.value = sitzplanRepository.anlegen(klasseId, name, spalten, reihen, doppeltische) }
+    fun planAnlegen(name: String, spalten: Int, reihen: Int, vorlage: SitzplanVorlage, vorbelegen: Boolean) {
+        viewModelScope.launch {
+            val ids = if (vorbelegen) uiState.value.schueler.map { it.id } else emptyList()
+            gewaehltePlanId.value = sitzplanRepository.anlegen(klasseId, name, spalten, reihen, vorlage, ids)
+        }
     }
 
-    fun planAendern(name: String, spalten: Int, reihen: Int, doppeltische: Boolean) {
-        val plan = uiState.value.aktiv ?: return
-        viewModelScope.launch { sitzplanRepository.aendern(plan.id, name, spalten, reihen, doppeltische) }
+    fun planAendern(name: String, spalten: Int, reihen: Int, einrasten: Boolean) = mitPlan { id ->
+        viewModelScope.launch { sitzplanRepository.aendern(id, name, spalten, reihen, einrasten) }
     }
 
-    fun planLoeschen() {
-        val plan = uiState.value.aktiv ?: return
-        viewModelScope.launch { sitzplanRepository.loeschen(plan.id); gewaehltePlanId.value = null }
-    }
-
-    fun alsStandard() {
-        val plan = uiState.value.aktiv ?: return
-        viewModelScope.launch { sitzplanRepository.alsStandard(plan.id) }
-    }
-
-    fun setzen(schuelerId: Long, spalte: Int, reihe: Int) {
-        val plan = uiState.value.aktiv ?: return
-        viewModelScope.launch { sitzplanRepository.setzen(plan.id, schuelerId, spalte, reihe) }
-    }
-
-    fun entfernen(schuelerId: Long) {
-        val plan = uiState.value.aktiv ?: return
-        viewModelScope.launch { sitzplanRepository.entfernen(plan.id, schuelerId) }
-    }
-
-    fun leerenStuhlUmschalten(spalte: Int, reihe: Int) {
-        val plan = uiState.value.aktiv ?: return
-        viewModelScope.launch { sitzplanRepository.leerenStuhlUmschalten(plan.id, spalte, reihe) }
-    }
-
-    fun mischen() {
-        val plan = uiState.value.aktiv ?: return
-        viewModelScope.launch { sitzplanRepository.mischen(plan.id) }
-    }
+    fun planLoeschen() = mitPlan { id -> viewModelScope.launch { sitzplanRepository.loeschen(id); gewaehltePlanId.value = null } }
+    fun alsStandard() = mitPlan { id -> viewModelScope.launch { sitzplanRepository.alsStandard(id) } }
+    fun ablegen(schuelerId: Long, x: Float, y: Float) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.ablegen(id, schuelerId, x, y) } }
+    fun verschieben(platzId: Long, x: Float, y: Float) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.verschieben(id, platzId, x, y) } }
+    fun drehen(platzId: Long, grad: Float) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.drehen(id, platzId, grad) } }
+    fun entfernen(schuelerId: Long) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.entfernen(id, schuelerId) } }
+    fun platzLoeschen(platzId: Long) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.platzLoeschen(id, platzId) } }
+    fun leererStuhl(x: Float, y: Float) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.leererStuhl(id, x, y) } }
+    fun partnerplatz(platzId: Long) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.partnerplatz(id, platzId) } }
+    fun beschriften(platzId: Long, text: String) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.beschriften(id, platzId, text) } }
+    fun mischen() = mitPlan { id -> viewModelScope.launch { sitzplanRepository.mischen(id) } }
 
     fun blickrichtungUmschalten() {
         val neu = if (uiState.value.blickrichtung == Blickrichtung.VON_VORN) Blickrichtung.VON_HINTEN else Blickrichtung.VON_VORN
