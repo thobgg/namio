@@ -19,6 +19,17 @@ Klassen anlegen, Fotos zuordnen, per Quiz mit Spaced Repetition üben — komple
   <img src="docs/screenshots/sitzplan_quiz.png" width="180" alt="Sitzplan-Quiz">
 </p>
 
+## Rechtlicher Hinweis
+
+Namio verarbeitet Namen und Fotos von Schülerinnen und Schülern – in der Regel Minderjährigen.
+Ob und wie du solche Daten erheben, speichern und auf einem privaten Gerät nutzen darfst, richtet
+sich nach der DSGVO, dem Schulgesetz deines Bundeslandes und den Vorgaben deiner Schule
+(z. B. Einwilligung der Erziehungsberechtigten, dienstliche Geräte). **Das musst du selbst klären,
+bevor du die App mit echten Daten benutzt.** Namio ist ein privates Hobbyprojekt ohne Gewähr;
+der Autor übernimmt keine Verantwortung für die rechtmäßige Nutzung und keine Haftung für Schäden,
+die aus der Nutzung entstehen. Die App speichert alles ausschließlich lokal und verschlüsselt und
+sendet nichts – die Verantwortung für Gerät, Sperre, Backups und Löschung liegt bei dir.
+
 ## Datenschutz zuerst
 
 Die App verarbeitet Fotos von Minderjährigen. Deshalb gelten harte Regeln, keine Empfehlungen:
