@@ -7,6 +7,7 @@ import androidx.navigation.toRoute
 import dagger.hilt.android.lifecycle.HiltViewModel
 import de.namio.core.lernen.AblenkerWaehler
 import de.namio.core.lernen.KartenAuswahl
+import de.namio.core.lernen.NamensVergleich
 import de.namio.core.lernen.QuizRunde
 import de.namio.core.model.QuizFehler
 import de.namio.core.model.QuizFrage
@@ -27,8 +28,8 @@ import java.time.Clock
 import javax.inject.Inject
 import kotlin.random.Random
 
-/** Rückmeldung nach einer Antwort. */
-data class Feedback(val gewaehltId: Long, val korrekt: Boolean)
+/** Rückmeldung nach einer Antwort. [gewaehltId] = null bei Freitext ohne Treffer. */
+data class Feedback(val gewaehltId: Long?, val korrekt: Boolean, val eingabe: String? = null)
 
 sealed interface QuizRundePhase {
     data object Laedt : QuizRundePhase
@@ -48,12 +49,15 @@ sealed interface QuizRundePhase {
         /** Nur im Sitzplan-Modus: der gerenderte Plan. */
         val sitzplan: Sitzplan? = null,
         val bestuhlung: Bestuhlung = Bestuhlung(),
+        /** Nur im Speedrun: verbleibende Sekunden. */
+        val restSekunden: Int? = null,
     ) : QuizRundePhase
 
     data class Ergebnis(
         val richtig: Int,
         val falsch: Int,
         val fehler: List<QuizFehler>,
+        val speedrun: Boolean = false,
     ) : QuizRundePhase
 }
 
@@ -89,6 +93,8 @@ class QuizRundeViewModel @Inject constructor(
     private var falsch = 0
     private val fehler = LinkedHashMap<Long, QuizFehler>()
     private var antwortLaeuft = false
+    private var speedrunEnde = 0L
+    private var speedrunVorbei = false
 
     init {
         viewModelScope.launch { starten(nurSchueler = null) }
@@ -117,6 +123,11 @@ class QuizRundeViewModel @Inject constructor(
         }
         val reihenfolge = when {
             nurSchueler != null -> nurSchueler.filter { it in mitFoto }
+            modus == QuizModus.SPEEDRUN -> {
+                // Speedrun: alle Schüler mit Foto, mehrfach durchgemischt – das Zeitlimit beendet die Runde.
+                val basis = mitFoto.shuffled()
+                if (basis.isEmpty()) emptyList() else List(SPEEDRUN_DURCHGAENGE) { basis.shuffled() }.flatten()
+            }
             else -> {
                 val karten = repository.lernkarten(klasseId, modus)
                 val faellig = KartenAuswahl.reihenfolge(mitFoto, karten, clock.instant())
@@ -128,33 +139,58 @@ class QuizRundeViewModel @Inject constructor(
             _uiState.update { it.copy(phase = QuizRundePhase.KeineKandidaten) }
             return
         }
-        runde = QuizRunde(reihenfolge)
+        runde = if (modus == QuizModus.SPEEDRUN) QuizRunde(reihenfolge, wiederholenBeiFehler = false, duplikateErlauben = true) else QuizRunde(reihenfolge)
         richtig = 0
         falsch = 0
         fehler.clear()
+        speedrunVorbei = false
         sessionStart = clock.millis()
         sessionId = repository.sessionStarten(klasseId, modus)
+        if (modus == QuizModus.SPEEDRUN) {
+            speedrunEnde = clock.millis() + SPEEDRUN_SEKUNDEN * 1000L
+            viewModelScope.launch {
+                while (!speedrunVorbei) {
+                    val rest = ((speedrunEnde - clock.millis()) / 1000L).toInt().coerceAtLeast(0)
+                    _uiState.update { s ->
+                        val p = s.phase
+                        if (p is QuizRundePhase.Frage) s.copy(phase = p.copy(restSekunden = rest)) else s
+                    }
+                    if (rest <= 0) { speedrunVorbei = true; abschliessen(); break }
+                    delay(250)
+                }
+            }
+        }
         naechsteFrage()
     }
 
+    private suspend fun abschliessen() {
+        repository.sessionBeenden(sessionId, klasseId, modus, sessionStart, richtig, falsch)
+        _uiState.update {
+            it.copy(phase = QuizRundePhase.Ergebnis(richtig, falsch, fehler.values.toList(), speedrun = modus == QuizModus.SPEEDRUN))
+        }
+    }
+
     private suspend fun naechsteFrage() {
+        if (speedrunVorbei) return
         val zielId = runde.aktuell
         if (zielId == null) {
-            repository.sessionBeenden(sessionId, klasseId, modus, sessionStart, richtig, falsch)
-            _uiState.update {
-                it.copy(phase = QuizRundePhase.Ergebnis(richtig, falsch, fehler.values.toList()))
-            }
+            speedrunVorbei = true
+            abschliessen()
             return
         }
         val ziel = alleSchueler.first { it.id == zielId }
-        val ablenker = ablenkerWaehler.waehle(
-            ziel = ziel,
-            kandidaten = alleSchueler,
-            verwechslungen = repository.verwechslungen(zielId),
-            anzahl = ANZAHL_ABLENKER,
-        )
-        // Im Sitzplan-Modus ist der ganze Plan die Auswahl – alle Schüler gehören ins Raster.
-        val optionen = if (modus == QuizModus.SITZPLAN) alleSchueler else (ablenker + ziel).shuffled()
+        val optionen = when (modus) {
+            // Im Sitzplan-Modus ist der ganze Plan die Auswahl – alle Schüler gehören ins Raster.
+            QuizModus.SITZPLAN -> alleSchueler
+            // Freitext: keine Optionen nötig.
+            QuizModus.FOTO_ZU_NAME_TIPPEN -> listOf(ziel)
+            else -> {
+                val anzahl = if (modus == QuizModus.NAME_ZU_FOTO) ANZAHL_ABLENKER_RASTER else ANZAHL_ABLENKER
+                val kandidaten = if (modus == QuizModus.NAME_ZU_FOTO) alleSchueler.filter { it.fotoDatei != null } else alleSchueler
+                val ablenker = ablenkerWaehler.waehle(ziel, kandidaten, repository.verwechslungen(zielId), anzahl)
+                (ablenker + ziel).shuffled()
+            }
+        }
         frageGezeigtAb = clock.millis()
         _uiState.update {
             it.copy(
@@ -165,33 +201,49 @@ class QuizRundeViewModel @Inject constructor(
                     gesamt = runde.anzahl,
                     sitzplan = sitzplan,
                     bestuhlung = bestuhlung,
+                    restSekunden = if (modus == QuizModus.SPEEDRUN) ((speedrunEnde - clock.millis()) / 1000L).toInt().coerceAtLeast(0) else null,
                 ),
             )
         }
     }
 
-    fun antworten(gewaehlt: Schueler) {
+    fun antworten(gewaehlt: Schueler) = verbuchen(korrekt = gewaehlt.id == (uiState.value.phase as? QuizRundePhase.Frage)?.frage?.ziel?.id, verwechseltMit = gewaehlt, eingabe = null)
+
+    /** Freitext-Antwort im Tippen-Modus. */
+    fun antwortenText(text: String) {
         val phase = uiState.value.phase as? QuizRundePhase.Frage ?: return
-        if (phase.feedback != null || antwortLaeuft) return
+        val ziel = phase.frage.ziel
+        val korrekt = NamensVergleich.istRichtig(text, ziel, alleSchueler)
+        val verwechselt = if (korrekt) null else NamensVergleich.verwechseltMit(text, ziel, alleSchueler)
+        verbuchen(korrekt, verwechselt, text)
+    }
+
+    private fun verbuchen(korrekt: Boolean, verwechseltMit: Schueler?, eingabe: String?) {
+        val phase = uiState.value.phase as? QuizRundePhase.Frage ?: return
+        if (phase.feedback != null || antwortLaeuft || speedrunVorbei) return
         antwortLaeuft = true
         val ziel = phase.frage.ziel
-        val korrekt = gewaehlt.id == ziel.id
         val dauer = clock.millis() - frageGezeigtAb
         if (korrekt) richtig++ else falsch++
-        if (!korrekt) fehler.putIfAbsent(ziel.id, QuizFehler(ziel, gewaehlt))
-        _uiState.update { it.copy(phase = phase.copy(feedback = Feedback(gewaehlt.id, korrekt))) }
+        if (!korrekt) fehler.putIfAbsent(ziel.id, QuizFehler(ziel, verwechseltMit))
+        _uiState.update { it.copy(phase = phase.copy(feedback = Feedback(verwechseltMit?.id ?: if (korrekt) ziel.id else null, korrekt, eingabe))) }
         viewModelScope.launch {
             repository.antwortVerbuchen(
                 sessionId = sessionId,
                 modus = modus,
                 schuelerId = ziel.id,
-                verwechseltMit = if (korrekt) null else gewaehlt.id,
+                verwechseltMit = if (korrekt) null else verwechseltMit?.id,
                 korrekt = korrekt,
                 dauerMs = dauer,
                 lernstandAktualisieren = modus != QuizModus.SPEEDRUN,
             )
             runde.antworte(korrekt)
-            delay(if (korrekt) FEEDBACK_RICHTIG_MS else FEEDBACK_FALSCH_MS)
+            val pause = when {
+                modus == QuizModus.SPEEDRUN -> if (korrekt) 250L else 900L
+                modus == QuizModus.FOTO_ZU_NAME_TIPPEN -> if (korrekt) 1000L else 2500L
+                else -> if (korrekt) FEEDBACK_RICHTIG_MS else FEEDBACK_FALSCH_MS
+            }
+            delay(pause)
             antwortLaeuft = false
             naechsteFrage()
         }
@@ -199,6 +251,9 @@ class QuizRundeViewModel @Inject constructor(
 
     private companion object {
         const val ANZAHL_ABLENKER = 3
+        const val ANZAHL_ABLENKER_RASTER = 8
+        const val SPEEDRUN_SEKUNDEN = 60
+        const val SPEEDRUN_DURCHGAENGE = 5
         const val FEEDBACK_RICHTIG_MS = 700L
         const val FEEDBACK_FALSCH_MS = 1600L
     }

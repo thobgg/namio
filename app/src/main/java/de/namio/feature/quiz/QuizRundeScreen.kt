@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -59,6 +61,19 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.horizontalScroll
@@ -84,6 +99,7 @@ fun QuizRundeScreen(
         fotoStore = fotoStore,
         onBeenden = onBeenden,
         onAntwort = viewModel::antworten,
+        onAntwortText = viewModel::antwortenText,
         onFehlerWiederholen = viewModel::fehlerWiederholen,
     )
 }
@@ -95,6 +111,7 @@ private fun QuizRundeInhalt(
     fotoStore: FotoStore,
     onBeenden: () -> Unit,
     onAntwort: (Schueler) -> Unit,
+    onAntwortText: (String) -> Unit,
     onFehlerWiederholen: () -> Unit,
 ) {
     Scaffold(
@@ -122,9 +139,12 @@ private fun QuizRundeInhalt(
                     textAlign = TextAlign.Center,
                     modifier = Modifier.align(Alignment.Center).padding(32.dp),
                 )
-                is QuizRundePhase.Frage ->
-                    if (state.modus == QuizModus.SITZPLAN) SitzplanFrageInhalt(phase, fotoStore, onAntwort)
-                    else FrageInhalt(phase, fotoStore, onAntwort)
+                is QuizRundePhase.Frage -> when (state.modus) {
+                    QuizModus.SITZPLAN -> SitzplanFrageInhalt(phase, fotoStore, onAntwort)
+                    QuizModus.FOTO_ZU_NAME_TIPPEN -> TippenFrageInhalt(phase, fotoStore, onAntwortText)
+                    QuizModus.NAME_ZU_FOTO -> NameZuFotoInhalt(phase, fotoStore, onAntwort)
+                    else -> FrageInhalt(phase, fotoStore, onAntwort)
+                }
                 is QuizRundePhase.Ergebnis -> ErgebnisInhalt(phase, fotoStore, onFehlerWiederholen, onBeenden)
             }
         }
@@ -142,12 +162,7 @@ private fun FrageInhalt(
         val querformat = maxWidth > maxHeight
         Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
             Column(Modifier.widthIn(max = if (querformat) Dp.Unspecified else INHALT_MAX_BREITE).fillMaxWidth()) {
-                LinearProgressIndicator(progress = { phase.fortschritt }, modifier = Modifier.fillMaxWidth())
-                Text(
-                    stringResource(R.string.quiz_fortschritt, phase.erledigt, phase.gesamt),
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(top = 4.dp, bottom = 12.dp),
-                )
+                FortschrittsZeile(phase)
             }
             if (querformat) {
                 Row(Modifier.weight(1f).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -172,6 +187,116 @@ private fun FrageInhalt(
                 ) {
                     Antworten(phase, ziel, onAntwort)
                 }
+            }
+        }
+    }
+}
+
+/** Fortschrittsbalken mit „x von y“ – im Speedrun stattdessen Restzeit und Trefferzahl. */
+@Composable
+private fun FortschrittsZeile(phase: QuizRundePhase.Frage) {
+    val rest = phase.restSekunden
+    if (rest != null) {
+        LinearProgressIndicator(progress = { rest / 60f }, modifier = Modifier.fillMaxWidth())
+        Row(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 12.dp)) {
+            Text(stringResource(R.string.speedrun_rest, rest), style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+            Text(stringResource(R.string.speedrun_treffer, phase.erledigt), style = MaterialTheme.typography.titleMedium)
+        }
+    } else {
+        LinearProgressIndicator(progress = { phase.fortschritt }, modifier = Modifier.fillMaxWidth())
+        Text(
+            stringResource(R.string.quiz_fortschritt, phase.erledigt, phase.gesamt),
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(top = 4.dp, bottom = 12.dp),
+        )
+    }
+}
+
+/** Tippen-Modus: Foto, Textfeld, Prüfen. */
+@Composable
+private fun TippenFrageInhalt(
+    phase: QuizRundePhase.Frage,
+    fotoStore: FotoStore,
+    onAntwortText: (String) -> Unit,
+) {
+    val ziel = phase.frage.ziel
+    var eingabe by remember(ziel.id) { mutableStateOf("") }
+    val fokus = remember { FocusRequester() }
+    LaunchedEffect(ziel.id) { fokus.requestFocus() }
+    Column(
+        modifier = Modifier.widthIn(max = INHALT_MAX_BREITE).fillMaxSize().imePadding().padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        FortschrittsZeile(phase)
+        Box(Modifier.weight(1f, fill = false).fillMaxWidth().heightIn(max = 360.dp), contentAlignment = Alignment.Center) {
+            ZielFoto(ziel, fotoStore, Modifier.fillMaxHeight().widthIn(max = 320.dp))
+        }
+        Spacer(Modifier.height(12.dp))
+        val fb = phase.feedback
+        if (fb == null) {
+            OutlinedTextField(
+                value = eingabe,
+                onValueChange = { eingabe = it },
+                label = { Text(stringResource(R.string.tippen_hinweis)) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { if (eingabe.isNotBlank()) onAntwortText(eingabe) }),
+                modifier = Modifier.fillMaxWidth().focusRequester(fokus),
+            )
+            Spacer(Modifier.height(8.dp))
+            Button(onClick = { onAntwortText(eingabe) }, enabled = eingabe.isNotBlank(), modifier = Modifier.fillMaxWidth().height(52.dp)) {
+                Text(stringResource(R.string.tippen_pruefen))
+            }
+        } else {
+            val farbe = if (fb.korrekt) Color(0xFF2E7D32) else MaterialTheme.colorScheme.error
+            Text(
+                if (fb.korrekt) stringResource(R.string.tippen_richtig, ziel.vollerName) else stringResource(R.string.tippen_falsch, fb.eingabe.orEmpty(), ziel.vollerName),
+                color = farbe,
+                style = MaterialTheme.typography.titleMedium,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+            )
+        }
+    }
+}
+
+/** Name → Foto: Name oben, Raster aus bis zu neun Gesichtern. */
+@Composable
+private fun NameZuFotoInhalt(
+    phase: QuizRundePhase.Frage,
+    fotoStore: FotoStore,
+    onAntwort: (Schueler) -> Unit,
+) {
+    val ziel = phase.frage.ziel
+    Column(
+        modifier = Modifier.widthIn(max = INHALT_MAX_BREITE).fillMaxSize().padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        FortschrittsZeile(phase)
+        Text(ziel.vollerName, style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center, modifier = Modifier.padding(vertical = 8.dp))
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(3),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+        ) {
+            items(phase.frage.optionen, key = { it.id }) { option ->
+                val zustand = antwortZustand(option, ziel, phase.feedback)
+                val rahmen = when (zustand) {
+                    AntwortZustand.RICHTIG -> Color(0xFF2E7D32)
+                    AntwortZustand.FALSCH -> MaterialTheme.colorScheme.error
+                    else -> Color.Transparent
+                }
+                SchuelerFoto(
+                    datei = option.fotoDatei?.let(fotoStore::datei),
+                    beschreibung = option.vollerName,
+                    modifier = Modifier
+                        .aspectRatio(1f)
+                        .clip(RoundedCornerShape(14.dp))
+                        .border(4.dp, rahmen, RoundedCornerShape(14.dp))
+                        .alpha(if (zustand == AntwortZustand.GEDIMMT) 0.4f else 1f)
+                        .then(if (phase.feedback == null) Modifier.clickable { onAntwort(option) } else Modifier),
+                )
             }
         }
     }
@@ -273,7 +398,7 @@ private fun antwortZustand(option: Schueler, ziel: Schueler, feedback: Feedback?
     if (feedback == null) return AntwortZustand.NEUTRAL
     return when {
         option.id == ziel.id -> AntwortZustand.RICHTIG
-        option.id == feedback.gewaehltId -> AntwortZustand.FALSCH
+        feedback.gewaehltId != null && option.id == feedback.gewaehltId -> AntwortZustand.FALSCH
         else -> AntwortZustand.GEDIMMT
     }
 }
@@ -314,7 +439,7 @@ private fun ErgebnisInhalt(
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(stringResource(R.string.ergebnis_titel), style = MaterialTheme.typography.headlineSmall)
+        Text(stringResource(if (phase.speedrun) R.string.ergebnis_speedrun_titel else R.string.ergebnis_titel), style = MaterialTheme.typography.headlineSmall)
         Text(
             stringResource(R.string.ergebnis_quote, quote),
             style = MaterialTheme.typography.displayMedium,
@@ -339,7 +464,7 @@ private fun ErgebnisInhalt(
         }
         Spacer(Modifier.height(16.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            if (phase.fehler.isNotEmpty()) {
+            if (phase.fehler.isNotEmpty() && !phase.speedrun) {
                 Button(onClick = onFehlerWiederholen) { Text(stringResource(R.string.ergebnis_fehler_wiederholen)) }
             }
             OutlinedButton(onClick = onBeenden) { Text(stringResource(R.string.ergebnis_fertig)) }

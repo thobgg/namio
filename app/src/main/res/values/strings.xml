@@ -75,6 +75,15 @@
     <string name="quiz_fortschritt">%1$d von %2$d</string>
     <string name="quiz_foto_beschreibung">Wer ist das?</string>
 
+    <string name="tippen_hinweis">Wie heißt das Kind?</string>
+    <string name="tippen_pruefen">Prüfen</string>
+    <string name="tippen_richtig">Richtig: %1$s</string>
+    <string name="tippen_falsch">„%1$s“ – richtig ist %2$s</string>
+    <string name="speedrun_rest">%1$d s</string>
+    <string name="speedrun_treffer">%1$d richtig</string>
+    <string name="speedrun_beschreibung">60 Sekunden, so viele wie möglich – ohne Einfluss auf den Lernstand.</string>
+    <string name="ergebnis_speedrun_titel">Zeit ist um</string>
+
     <!-- Ergebnis -->
     <string name="ergebnis_titel">Runde geschafft</string>
     <string name="ergebnis_quote">%1$d %%</string>

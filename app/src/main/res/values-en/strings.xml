@@ -75,6 +75,15 @@
     <string name="quiz_fortschritt">%1$d of %2$d</string>
     <string name="quiz_foto_beschreibung">Who is this?</string>
 
+    <string name="tippen_hinweis">What is this child’s name?</string>
+    <string name="tippen_pruefen">Check</string>
+    <string name="tippen_richtig">Correct: %1$s</string>
+    <string name="tippen_falsch">“%1$s” – it’s %2$s</string>
+    <string name="speedrun_rest">%1$d s</string>
+    <string name="speedrun_treffer">%1$d correct</string>
+    <string name="speedrun_beschreibung">60 seconds, as many as you can – no effect on progress.</string>
+    <string name="ergebnis_speedrun_titel">Time’s up</string>
+
     <!-- Result -->
     <string name="ergebnis_titel">Round complete</string>
     <string name="ergebnis_quote">%1$d %%</string>

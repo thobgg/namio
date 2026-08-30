@@ -4,8 +4,14 @@ package de.namio.core.lernen
  * Ablauf einer Runde: eine Warteschlange von Schüler-IDs. Falsch beantwortete kommen später in
  * derselben Runde noch einmal dran, möglichst nicht direkt hintereinander.
  */
-class QuizRunde(start: List<Long>) {
-    private val warteschlange = ArrayDeque(start.distinct())
+class QuizRunde(
+    start: List<Long>,
+    /** Falsch Beantwortete später erneut fragen (Leitner-Runde) – im Speedrun aus. */
+    private val wiederholenBeiFehler: Boolean = true,
+    /** Startliste darf denselben Schüler mehrfach enthalten (Speedrun). */
+    duplikateErlauben: Boolean = false,
+) {
+    private val warteschlange = ArrayDeque(if (duplikateErlauben) start else start.distinct())
     private val gesamt = warteschlange.size
     private var erledigt = 0
     private var zuletzt: Long? = null
@@ -31,7 +37,7 @@ class QuizRunde(start: List<Long>) {
     fun antworte(korrekt: Boolean) {
         val id = warteschlange.removeFirstOrNull() ?: return
         zuletzt = id
-        if (korrekt) {
+        if (korrekt || !wiederholenBeiFehler) {
             erledigt++
         } else {
             val position = minOf(MINDEST_ABSTAND, warteschlange.size)

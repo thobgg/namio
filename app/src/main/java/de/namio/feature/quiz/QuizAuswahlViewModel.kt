@@ -20,7 +20,7 @@ data class QuizAuswahlUiState(
     val klasse: Klasse? = null,
     val faellig: Map<QuizModus, Int> = emptyMap(),
     /** Modi, die in dieser Version spielbar sind. */
-    val verfuegbar: Set<QuizModus> = setOf(QuizModus.FOTO_ZU_NAME_MC, QuizModus.SITZPLAN),
+    val verfuegbar: Set<QuizModus> = QuizModus.entries.toSet(),
     val laedt: Boolean = true,
 )
 

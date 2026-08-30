@@ -96,13 +96,14 @@ private fun QuizAuswahlInhalt(
                                 style = MaterialTheme.typography.titleMedium,
                                 modifier = Modifier.weight(1f),
                             )
-                            if (verfuegbar && faellig > 0) {
+                            if (verfuegbar && faellig > 0 && modus != QuizModus.SPEEDRUN) {
                                 Badge { Text(faellig.toString()) }
                             }
                         }
                         Text(
                             when {
                                 !verfuegbar -> stringResource(R.string.quiz_modus_bald)
+                                modus == QuizModus.SPEEDRUN -> stringResource(R.string.speedrun_beschreibung)
                                 faellig == 0 -> stringResource(R.string.quiz_nichts_faellig)
                                 else -> pluralStringResource(R.plurals.quiz_faellig, faellig, faellig)
                             },
