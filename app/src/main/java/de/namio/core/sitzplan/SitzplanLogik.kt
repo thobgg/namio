@@ -17,10 +17,12 @@ object SitzplanLogik {
     /** Ab dieser Entfernung (in Einheiten) vom Slot-Mittelpunkt gilt ein Drop als „auf dem Platz“. */
     const val TREFFER_RADIUS = 0.55f
     const val MAX_PLAETZE = 4
+    const val MAX_BREITE = 6f
 
     /** Raumkoordinate eines Slots (Mittelpunkt), Drehung berücksichtigt. */
     fun slotPosition(tisch: Tisch, slot: Int, spalten: Int, reihen: Int): Pair<Float, Float> {
-        val versatz = slot - (tisch.plaetze - 1) / 2f
+        // Slots gleichmäßig über die Tischbreite verteilt
+        val versatz = if (tisch.plaetze <= 0) 0f else ((slot + 0.5f) / tisch.plaetze - 0.5f) * tisch.breite
         val rad = Math.toRadians(tisch.drehung.toDouble())
         return (tisch.x + (versatz * cos(rad) / spalten).toFloat()) to (tisch.y + (versatz * sin(rad) / reihen).toFloat())
     }
@@ -54,7 +56,8 @@ object SitzplanLogik {
     fun tischHinzufuegen(b: Bestuhlung, sitzplanId: Long, x: Float, y: Float, drehung: Float, plaetze: Int, beschriftung: String?, spalten: Int, reihen: Int, einrasten: Boolean): Bestuhlung {
         val (nx, ny) = position(x, y, spalten, reihen, einrasten)
         val id = neueId(b)
-        val tisch = Tisch(id, sitzplanId, nx, ny, drehung, plaetze.coerceIn(0, MAX_PLAETZE), beschriftung?.takeIf { plaetze == 0 })
+        val n = plaetze.coerceIn(0, MAX_PLAETZE)
+        val tisch = Tisch(id, sitzplanId, nx, ny, drehung, n, beschriftung?.takeIf { plaetze == 0 }, breite = n.coerceAtLeast(1).toFloat())
         val slots = (0 until tisch.plaetze).map { Sitzplatz(0, sitzplanId, id, it, null) }
         return Bestuhlung(b.tische + tisch, b.plaetze + slots)
     }
@@ -94,6 +97,10 @@ object SitzplanLogik {
     fun drehen(b: Bestuhlung, tischId: Long, grad: Float): Bestuhlung =
         b.copy(tische = b.tische.map { if (it.id == tischId) it.copy(drehung = ((it.drehung + grad) % 360 + 360) % 360) else it })
 
+    /** Ändert die Tischbreite in Platzbreiten (0,5–[MAX_BREITE]). */
+    fun breiteAendern(b: Bestuhlung, tischId: Long, breite: Float): Bestuhlung =
+        b.copy(tische = b.tische.map { if (it.id == tischId) it.copy(breite = breite.coerceIn(0.5f, MAX_BREITE)) else it })
+
     /** Ändert die Platzzahl (1–[MAX_PLAETZE]). Wegfallende Slots lassen ihre Schüler unplatziert. */
     fun plaetzeAendern(b: Bestuhlung, tischId: Long, plaetze: Int): Bestuhlung {
         val t = b.tisch(tischId) ?: return b
@@ -102,7 +109,7 @@ object SitzplanLogik {
         val vorhanden = b.plaetzeVon(tischId)
         val behalten = b.plaetze.filter { it.tischId != tischId || it.slot < n }
         val neue = (vorhanden.size until n).map { Sitzplatz(0, t.sitzplanId, tischId, it, null) }
-        return Bestuhlung(b.tische.map { if (it.id == tischId) it.copy(plaetze = n) else it }, behalten + neue)
+        return Bestuhlung(b.tische.map { if (it.id == tischId) it.copy(plaetze = n, breite = maxOf(it.breite, n.toFloat())) else it }, behalten + neue)
     }
 
     /** Macht aus einem Tisch ohne Sitzende ein Möbel mit Text; leerer Text macht einen Einzeltisch daraus. */

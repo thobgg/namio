@@ -51,6 +51,9 @@ import androidx.compose.material.icons.filled.RotateRight
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material.icons.filled.ZoomOut
+import androidx.compose.material.icons.filled.UnfoldLess
+import androidx.compose.material.icons.filled.UnfoldMore
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
@@ -126,6 +129,7 @@ fun SitzplanScreen(
             verschieben = viewModel::verschieben,
             drehen = viewModel::drehen,
             plaetzeAendern = viewModel::plaetzeAendern,
+            breiteAendern = viewModel::breiteAendern,
             beschriften = viewModel::beschriften,
             entfernen = viewModel::entfernen,
             tischLoeschen = viewModel::tischLoeschen,
@@ -151,6 +155,7 @@ data class SitzplanAktionen(
     val verschieben: (Long, Float, Float) -> Unit,
     val drehen: (Long, Float) -> Unit,
     val plaetzeAendern: (Long, Int) -> Unit,
+    val breiteAendern: (Long, Float) -> Unit,
     val beschriften: (Long, String) -> Unit,
     val entfernen: (Long) -> Unit,
     val tischLoeschen: (Long) -> Unit,
@@ -392,6 +397,7 @@ private fun SitzplanInhalt(
                             sitzende = best.plaetzeVon(gewaehlt.id).count { it.schuelerId != null },
                             onDrehen = { aktionen.drehen(gewaehlt.id, it) },
                             onPlaetze = { aktionen.plaetzeAendern(gewaehlt.id, it) },
+                            onBreite = { aktionen.breiteAendern(gewaehlt.id, it) },
                             onBeschriften = { beschriftenDialog = true },
                             onAlleEntfernen = { best.plaetzeVon(gewaehlt.id).mapNotNull { it.schuelerId }.forEach(aktionen.entfernen) },
                             onLoeschen = { aktionen.tischLoeschen(gewaehlt.id); ausgewaehlterTisch = null },
@@ -462,7 +468,7 @@ private fun tischAnker(flaeche: Rect?, spalten: Int, reihen: Int, tisch: Tisch, 
     val f = flaeche ?: return Offset.Zero
     val a = SitzplanLogik.anzeige(tisch, blickrichtung)
     val einheit = f.width / spalten
-    val b = einheit * tisch.plaetze.coerceAtLeast(1) * 0.96f
+    val b = einheit * tisch.breite * 0.96f
     val h = einheit * tischTiefe(!tisch.istMoebel)
     return Offset(f.left + f.width * a.x - b / 2, f.top + f.height * a.y - h / 2)
 }
@@ -504,6 +510,7 @@ private fun TischWerkzeuge(
     sitzende: Int,
     onDrehen: (Float) -> Unit,
     onPlaetze: (Int) -> Unit,
+    onBreite: (Float) -> Unit,
     onBeschriften: () -> Unit,
     onAlleEntfernen: () -> Unit,
     onLoeschen: () -> Unit,
@@ -522,6 +529,10 @@ private fun TischWerkzeuge(
             Text(stringResource(R.string.sitzplan_plaetze_anzahl, tisch.plaetze), style = MaterialTheme.typography.labelMedium)
             IconButton(onClick = { onPlaetze(tisch.plaetze + 1) }, enabled = tisch.plaetze < SitzplanLogik.MAX_PLAETZE) { Icon(Icons.Default.Add, contentDescription = stringResource(R.string.sitzplan_platz_mehr)) }
         }
+        Spacer(Modifier.size(8.dp))
+        IconButton(onClick = { onBreite(tisch.breite - 0.5f) }, enabled = tisch.breite > 0.5f) { Icon(Icons.Default.UnfoldLess, contentDescription = stringResource(R.string.sitzplan_schmaler), modifier = Modifier.graphicsLayer { rotationZ = 90f }) }
+        Text(stringResource(R.string.sitzplan_breite_anzahl, tisch.breite), style = MaterialTheme.typography.labelMedium)
+        IconButton(onClick = { onBreite(tisch.breite + 0.5f) }, enabled = tisch.breite < SitzplanLogik.MAX_BREITE) { Icon(Icons.Default.UnfoldMore, contentDescription = stringResource(R.string.sitzplan_breiter), modifier = Modifier.graphicsLayer { rotationZ = 90f }) }
         if (sitzende == 0) {
             IconButton(onClick = onBeschriften) { Icon(Icons.Default.Label, contentDescription = stringResource(R.string.sitzplan_beschriften)) }
         } else {

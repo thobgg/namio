@@ -3,6 +3,7 @@ package de.namio.feature.sitzplan
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -103,7 +104,7 @@ fun SitzplanFlaeche(
                 }
                 bestuhlung.tische.forEach { tisch ->
                     val a = SitzplanLogik.anzeige(tisch, blickrichtung)
-                    val tischBreite = einheit * tisch.plaetze.coerceAtLeast(1) * 0.96f
+                    val tischBreite = einheit * tisch.breite * 0.96f
                     val tischHoehe = einheit * tischTiefe(namenZeigen && !tisch.istMoebel)
                     val links = with(dichte) { (breite * a.x - tischBreite / 2).toPx().roundToInt() }
                     val oben = with(dichte) { (hoehe * a.y - tischHoehe / 2).toPx().roundToInt() }
@@ -189,7 +190,7 @@ private fun TischKachel(
         } else {
             // Tischkante an der Seite, in die der Tisch „blickt“ (Richtung Tafel bei 0°)
             Box(Modifier.fillMaxWidth(0.9f).height(3.dp).align(Alignment.TopCenter).offset(y = hoehe * 0.05f).background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)))
-            Row(Modifier.fillMaxSize().graphicsLayer { rotationZ = if (kopfueber) 180f else 0f }) {
+            Row(Modifier.fillMaxSize().graphicsLayer { rotationZ = if (kopfueber) 180f else 0f }, horizontalArrangement = Arrangement.SpaceEvenly) {
                 slotsAnzeige.forEach { slot ->
                     Slot(
                         schueler = slot.schuelerId?.let(schuelerProId::get),
@@ -197,7 +198,7 @@ private fun TischKachel(
                         einheit = einheit,
                         namenZeigen = namenZeigen,
                         fotoStore = fotoStore,
-                        modifier = Modifier.weight(1f).fillMaxHeight().then(slotModifier(tisch, slot)),
+                        modifier = Modifier.width(einheit).fillMaxHeight().then(slotModifier(tisch, slot)),
                     )
                 }
             }

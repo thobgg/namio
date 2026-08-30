@@ -88,6 +88,7 @@ class SitzplanRepository @Inject constructor(
     suspend fun tischHinzufuegen(planId: Long, x: Float, y: Float, plaetze: Int, beschriftung: String?) = schreibe(planId) { p, b -> SitzplanLogik.tischHinzufuegen(b, planId, x, y, 0f, plaetze, beschriftung, p.spalten, p.reihen, p.einrasten) }
     suspend fun verschieben(planId: Long, tischId: Long, x: Float, y: Float) = schreibe(planId) { p, b -> SitzplanLogik.verschieben(b, tischId, x, y, p.spalten, p.reihen, p.einrasten) }
     suspend fun drehen(planId: Long, tischId: Long, grad: Float) = schreibe(planId) { _, b -> SitzplanLogik.drehen(b, tischId, grad) }
+    suspend fun breiteAendern(planId: Long, tischId: Long, breite: Float) = schreibe(planId) { _, b -> SitzplanLogik.breiteAendern(b, tischId, breite) }
     suspend fun plaetzeAendern(planId: Long, tischId: Long, plaetze: Int) = schreibe(planId) { _, b -> SitzplanLogik.plaetzeAendern(b, tischId, plaetze) }
     suspend fun beschriften(planId: Long, tischId: Long, text: String) = schreibe(planId) { _, b -> SitzplanLogik.beschriften(b, tischId, text) }
     suspend fun entfernen(planId: Long, schuelerId: Long) = schreibe(planId) { _, b -> SitzplanLogik.entfernen(b, schuelerId) }

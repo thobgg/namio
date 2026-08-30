@@ -24,6 +24,8 @@ data class Tisch(
     val drehung: Float = 0f,
     val plaetze: Int = 1,
     val beschriftung: String? = null,
+    /** Breite in Platzbreiten; Standard = Platzzahl. */
+    val breite: Float = plaetze.coerceAtLeast(1).toFloat(),
 ) {
     val istMoebel: Boolean get() = plaetze == 0
 }

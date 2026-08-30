@@ -69,6 +69,6 @@ internal fun Lernkarte.zuEntity() = LernkarteEntity(
 
 internal fun SitzplanEntity.zuModell() = Sitzplan(id, klasseId, name, spalten, reihen, istStandard, einrasten)
 internal fun SitzplatzEntity.zuModell() = Sitzplatz(id, sitzplanId, tischId, slot, schuelerId)
-internal fun TischEntity.zuModell() = Tisch(id, sitzplanId, x, y, drehung, plaetze, beschriftung)
-internal fun Tisch.zuEntity() = TischEntity(id.coerceAtLeast(0), sitzplanId, x, y, drehung, plaetze, beschriftung)
+internal fun TischEntity.zuModell() = Tisch(id, sitzplanId, x, y, drehung, plaetze, beschriftung, breite)
+internal fun Tisch.zuEntity() = TischEntity(id.coerceAtLeast(0), sitzplanId, x, y, drehung, plaetze, beschriftung, breite)
 internal fun Sitzplatz.zuEntity(tischId: Long = this.tischId) = SitzplatzEntity(id, sitzplanId, tischId, slot, schuelerId)

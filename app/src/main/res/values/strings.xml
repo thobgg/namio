@@ -135,6 +135,9 @@
     <string name="sitzplan_ausgelost">%1$s</string>
     <string name="sitzplan_nochmal">Nochmal</string>
     <string name="sitzplan_hinweis_gesperrt">Gesperrt – zum Bearbeiten das Schloss antippen. Würfel: zufällige Person.</string>
+    <string name="sitzplan_schmaler">Schmaler</string>
+    <string name="sitzplan_breiter">Breiter</string>
+    <string name="sitzplan_breite_anzahl">%1$.1f br.</string>
     <string name="sitzplan_platz_loeschen">Tisch löschen</string>
     <string name="sitzplan_unplatziert">Noch ohne Platz: %1$d</string>
     <string name="sitzplan_alle_platziert">Alle sitzen. Hierher ziehen, um jemanden vom Plan zu nehmen.</string>

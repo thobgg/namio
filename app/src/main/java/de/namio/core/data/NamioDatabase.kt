@@ -41,7 +41,7 @@ import kotlin.math.sin
         TischEntity::class,
         SitzplatzEntity::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -259,6 +259,14 @@ abstract class NamioDatabase : RoomDatabase() {
             }
         }
 
-        val ALLE_MIGRATIONEN = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+        /** v8: Tischbreite unabhängig von der Platzzahl. */
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE tisch ADD COLUMN breite REAL NOT NULL DEFAULT 1")
+                db.execSQL("UPDATE tisch SET breite = MAX(plaetze, 1)")
+            }
+        }
+
+        val ALLE_MIGRATIONEN = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
     }
 }

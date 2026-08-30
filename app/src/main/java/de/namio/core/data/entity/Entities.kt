@@ -170,6 +170,8 @@ data class TischEntity(
     /** Anzahl Sitzplätze nebeneinander; 0 = Möbel (Pult, PC …). */
     val plaetze: Int = 1,
     val beschriftung: String? = null,
+    /** Breite in Platzbreiten (z. B. Zweiertisch mit einem Kind = 2). */
+    @ColumnInfo(defaultValue = "1") val breite: Float = 1f,
 )
 
 @Entity(

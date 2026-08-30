@@ -61,7 +61,8 @@ class SitzplanViewModel @Inject constructor(
 
     private val klasseId = savedStateHandle.toRoute<Route.Sitzplan>().klasseId
     private val gewaehltePlanId = MutableStateFlow<Long?>(null)
-    private val gesperrt = MutableStateFlow<Boolean?>(null)
+    /** Explizit gesetzte Sperre je Plan; ohne Eintrag gilt: Pläne mit Tischen starten gesperrt. */
+    private val gesperrt = MutableStateFlow<Map<Long, Boolean>>(emptyMap())
     private val ausgelost = MutableStateFlow<Long?>(null)
     /** Undo-Stapel je Plan: frühere Bestuhlungen, jüngste zuletzt. */
     private val verlauf = MutableStateFlow<Map<Long, List<Bestuhlung>>>(emptyMap())
@@ -87,7 +88,7 @@ class SitzplanViewModel @Inject constructor(
         ) { s, b, g, z, v -> Extra(s, b, g, z, v) },
     ) { klasse, plaene, aktiv, best, extra ->
         // Standard: bestehende Pläne mit Tischen starten gesperrt, leere Pläne offen.
-        val sperre = extra.gesperrt ?: best.tische.isNotEmpty()
+        val sperre = aktiv?.let { extra.gesperrt[it.id] } ?: best.tische.isNotEmpty()
         SitzplanUiState(
             klasse, plaene, aktiv, best, extra.schueler, extra.blick, laedt = false,
             gesperrt = sperre,
@@ -99,12 +100,15 @@ class SitzplanViewModel @Inject constructor(
     private data class Extra(
         val schueler: List<Schueler>,
         val blick: Blickrichtung,
-        val gesperrt: Boolean?,
+        val gesperrt: Map<Long, Boolean>,
         val ausgelost: Long?,
         val verlauf: Map<Long, List<Bestuhlung>>,
     )
 
-    fun sperreUmschalten() { gesperrt.value = !uiState.value.gesperrt }
+    fun sperreUmschalten() {
+        val plan = uiState.value.aktiv ?: return
+        gesperrt.value = gesperrt.value + (plan.id to !uiState.value.gesperrt)
+    }
 
     /** Lost einen sitzenden Schüler aus (nie zweimal hintereinander denselben, wenn möglich). */
     fun auslosen() {
@@ -136,6 +140,8 @@ class SitzplanViewModel @Inject constructor(
     private inline fun mitPlan(block: (Long) -> Unit) {
         val plan = uiState.value.aktiv ?: return
         if (uiState.value.gesperrt) return
+        // Wer bearbeitet, bleibt entsperrt – auch wenn gerade der erste Tisch entsteht.
+        if (plan.id !in gesperrt.value) gesperrt.value = gesperrt.value + (plan.id to false)
         merken()
         block(plan.id)
     }
@@ -156,6 +162,7 @@ class SitzplanViewModel @Inject constructor(
     fun tischHinzufuegen(x: Float, y: Float, plaetze: Int) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.tischHinzufuegen(id, x, y, plaetze, null) } }
     fun verschieben(tischId: Long, x: Float, y: Float) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.verschieben(id, tischId, x, y) } }
     fun drehen(tischId: Long, grad: Float) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.drehen(id, tischId, grad) } }
+    fun breiteAendern(tischId: Long, breite: Float) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.breiteAendern(id, tischId, breite) } }
     fun plaetzeAendern(tischId: Long, plaetze: Int) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.plaetzeAendern(id, tischId, plaetze) } }
     fun beschriften(tischId: Long, text: String) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.beschriften(id, tischId, text) } }
     fun entfernen(schuelerId: Long) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.entfernen(id, schuelerId) } }
