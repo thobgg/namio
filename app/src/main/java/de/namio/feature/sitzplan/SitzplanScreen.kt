@@ -410,7 +410,7 @@ private fun tischAnker(flaeche: Rect?, spalten: Int, reihen: Int, tisch: Tisch, 
     val a = SitzplanLogik.anzeige(tisch, blickrichtung)
     val einheit = f.width / spalten
     val b = einheit * tisch.plaetze.coerceAtLeast(1) * 0.96f
-    val h = einheit * TISCH_TIEFE
+    val h = einheit * tischTiefe(true)
     return Offset(f.left + f.width * a.x - b / 2, f.top + f.height * a.y - h / 2)
 }
 
@@ -419,7 +419,7 @@ private fun slotAnker(flaeche: Rect?, spalten: Int, reihen: Int, tisch: Tisch, s
     val (mx, my) = SitzplanLogik.slotPosition(tisch, slot, spalten, reihen)
     val (ax, ay) = SitzplanLogik.modellKoordinate(mx, my, blickrichtung)
     val einheit = f.width / spalten
-    return Offset(f.left + f.width * ax - einheit / 2, f.top + f.height * ay - einheit * TISCH_TIEFE / 2)
+    return Offset(f.left + f.width * ax - einheit / 2, f.top + f.height * ay - einheit * tischTiefe(true) / 2)
 }
 
 /** Long-Press startet den Drag. [anker] liefert die Root-Position des Elements, damit Fingerpositionen absolut sind. */
