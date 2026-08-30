@@ -28,6 +28,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Cameraswitch
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -102,6 +104,7 @@ fun FotoAufnahmeScreen(
         onAufgenommen = viewModel::speichere,
         onGalerie = { galerie.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
         onFehlerGesehen = viewModel::fehlerGesehen,
+        onUeberspringen = viewModel::ueberspringen,
     )
 }
 
@@ -116,6 +119,7 @@ private fun FotoAufnahmeInhalt(
     onAufgenommen: (ByteArray, Int) -> Unit,
     onGalerie: () -> Unit,
     onFehlerGesehen: () -> Unit,
+    onUeberspringen: () -> Unit,
 ) {
     val snackbar = remember { SnackbarHostState() }
     val context = LocalContext.current
@@ -133,13 +137,31 @@ private fun FotoAufnahmeInhalt(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.foto_titel)) },
+                title = {
+                    val aktuell = state.aktuell
+                    if (state.runde && aktuell != null) {
+                        Column {
+                            Text("${aktuell.vorname} ${aktuell.nachname}", maxLines = 1)
+                            Text(
+                                stringResource(R.string.foto_runde_fortschritt, state.position, state.gesamt),
+                                style = MaterialTheme.typography.labelMedium,
+                            )
+                        }
+                    } else {
+                        Text(stringResource(R.string.foto_titel))
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onZurueck) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.zurueck))
                     }
                 },
                 actions = {
+                    if (state.runde) {
+                        IconButton(onClick = onUeberspringen, enabled = !state.speichert) {
+                            Icon(Icons.Default.SkipNext, contentDescription = stringResource(R.string.foto_runde_ueberspringen))
+                        }
+                    }
                     if (berechtigt) {
                         IconButton(onClick = onKameraWechseln) {
                             Icon(Icons.Default.Cameraswitch, contentDescription = stringResource(R.string.foto_kamera_wechseln))
@@ -154,6 +176,12 @@ private fun FotoAufnahmeInhalt(
             Modifier.fillMaxSize().padding(innen),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            if (state.runde && state.gesamt > 0) {
+                LinearProgressIndicator(
+                    progress = { (state.position - 1).coerceAtLeast(0) / state.gesamt.toFloat() },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
             if (berechtigt) {
                 KameraSucher(
                     frontkamera = state.frontkamera,

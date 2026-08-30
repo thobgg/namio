@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.UploadFile
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.AlertDialog
@@ -67,6 +68,7 @@ fun KlassenDetailScreen(
     onSitzplan: (Long) -> Unit,
     onStatistik: (Long) -> Unit,
     onCsvImport: (Long) -> Unit,
+    onFotoRunde: (Long) -> Unit,
     viewModel: KlassenDetailViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -81,6 +83,7 @@ fun KlassenDetailScreen(
         onSitzplan = { state.klasse?.let { onSitzplan(it.id) } },
         onStatistik = { state.klasse?.let { onStatistik(it.id) } },
         onCsvImport = { state.klasse?.let { onCsvImport(it.id) } },
+        onFotoRunde = { state.klasse?.let { onFotoRunde(it.id) } },
     )
 }
 
@@ -104,6 +107,7 @@ private fun KlassenDetailInhalt(
     onSitzplan: () -> Unit,
     onStatistik: () -> Unit,
     onCsvImport: () -> Unit,
+    onFotoRunde: () -> Unit,
 ) {
     var dialogOffen by rememberSaveable { mutableStateOf(false) }
 
@@ -119,6 +123,11 @@ private fun KlassenDetailInhalt(
                 actions = {
                     IconButton(onClick = onCsvImport) {
                         Icon(Icons.Default.UploadFile, contentDescription = stringResource(R.string.csv_titel))
+                    }
+                    if (state.schueler.any { it.fotoDatei == null }) {
+                        IconButton(onClick = onFotoRunde) {
+                            Icon(Icons.Default.PhotoCamera, contentDescription = stringResource(R.string.foto_runde_oeffnen))
+                        }
                     }
                     if (state.schueler.isNotEmpty()) {
                         IconButton(onClick = onStatistik) {

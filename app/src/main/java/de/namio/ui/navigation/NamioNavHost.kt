@@ -22,7 +22,7 @@ sealed interface Route {
     @Serializable data object Einstellungen : Route
     @Serializable data class KlassenDetail(val klasseId: Long) : Route
     @Serializable data class SchuelerDetail(val schuelerId: Long) : Route
-    @Serializable data class FotoAufnahme(val schuelerId: Long) : Route
+    @Serializable data class FotoAufnahme(val schuelerId: Long = -1, val klasseId: Long = -1) : Route
     @Serializable data class QuizAuswahl(val klasseId: Long) : Route
     @Serializable data class Sitzplan(val klasseId: Long) : Route
     @Serializable data class Statistik(val klasseId: Long) : Route
@@ -52,12 +52,13 @@ fun NamioNavHost() {
                 onSitzplan = { navController.navigate(Route.Sitzplan(it)) },
                 onStatistik = { navController.navigate(Route.Statistik(it)) },
                 onCsvImport = { navController.navigate(Route.CsvImport(it)) },
+                onFotoRunde = { navController.navigate(Route.FotoAufnahme(klasseId = it)) },
             )
         }
         composable<Route.SchuelerDetail> {
             SchuelerDetailScreen(
                 onZurueck = { navController.popBackStack() },
-                onFotoAufnehmen = { navController.navigate(Route.FotoAufnahme(it)) },
+                onFotoAufnehmen = { navController.navigate(Route.FotoAufnahme(schuelerId = it)) },
             )
         }
         composable<Route.FotoAufnahme> {

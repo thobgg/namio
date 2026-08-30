@@ -60,6 +60,9 @@
     <string name="foto_kamera_wechseln">Switch camera</string>
     <string name="foto_berechtigung_fehlt">Without camera access Namio can’t take photos. You can pick a picture from the gallery instead.</string>
     <string name="foto_berechtigung_anfragen">Allow camera access</string>
+    <string name="foto_runde_oeffnen">Photo round: photos for all pupils without one</string>
+    <string name="foto_runde_fortschritt">Pupil %1$d of %2$d</string>
+    <string name="foto_runde_ueberspringen">Skip</string>
     <string name="foto_fehler">The photo could not be saved.</string>
 
     <!-- Quiz -->
