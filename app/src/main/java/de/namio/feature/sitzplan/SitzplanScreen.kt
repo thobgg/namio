@@ -7,8 +7,6 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.material.icons.filled.ZoomIn
-import androidx.compose.material.icons.filled.ZoomOut
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -33,13 +31,15 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Cameraswitch
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.GroupAdd
 import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PersonRemove
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.RotateLeft
 import androidx.compose.material.icons.filled.RotateRight
 import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material.icons.filled.ZoomIn
+import androidx.compose.material.icons.filled.ZoomOut
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
@@ -82,13 +82,16 @@ import de.namio.R
 import de.namio.core.media.FotoStore
 import de.namio.core.model.Schueler
 import de.namio.core.model.SitzplanVorlage
-import de.namio.core.model.Sitzplatz
+import de.namio.core.model.Tisch
 import de.namio.core.repository.SitzplanRepository
 import de.namio.core.sitzplan.SitzplanLogik
 import de.namio.feature.klassen.rememberFotoStore
 import de.namio.ui.components.BestaetigenDialog
 import de.namio.ui.components.SchuelerFoto
 import kotlin.math.roundToInt
+
+private const val ZOOM_MIN = 0.5f
+private const val ZOOM_MAX = 3f
 
 @Composable
 fun SitzplanScreen(
@@ -108,21 +111,18 @@ fun SitzplanScreen(
             planLoeschen = viewModel::planLoeschen,
             alsStandard = viewModel::alsStandard,
             ablegen = viewModel::ablegen,
+            tischHinzufuegen = viewModel::tischHinzufuegen,
             verschieben = viewModel::verschieben,
             drehen = viewModel::drehen,
-            entfernen = viewModel::entfernen,
-            platzLoeschen = viewModel::platzLoeschen,
-            leererStuhl = viewModel::leererStuhl,
-            partnerplatz = viewModel::partnerplatz,
+            plaetzeAendern = viewModel::plaetzeAendern,
             beschriften = viewModel::beschriften,
+            entfernen = viewModel::entfernen,
+            tischLoeschen = viewModel::tischLoeschen,
             mischen = viewModel::mischen,
             blickrichtung = viewModel::blickrichtungUmschalten,
         ),
     )
 }
-
-private const val ZOOM_MIN = 0.5f
-private const val ZOOM_MAX = 3f
 
 /** Alle Editor-Aktionen gebündelt, damit die Composables schlank bleiben. */
 data class SitzplanAktionen(
@@ -132,22 +132,22 @@ data class SitzplanAktionen(
     val planLoeschen: () -> Unit,
     val alsStandard: () -> Unit,
     val ablegen: (Long, Float, Float) -> Unit,
+    val tischHinzufuegen: (Float, Float, Int) -> Unit,
     val verschieben: (Long, Float, Float) -> Unit,
     val drehen: (Long, Float) -> Unit,
-    val entfernen: (Long) -> Unit,
-    val platzLoeschen: (Long) -> Unit,
-    val leererStuhl: (Float, Float) -> Unit,
-    val partnerplatz: (Long) -> Unit,
+    val plaetzeAendern: (Long, Int) -> Unit,
     val beschriften: (Long, String) -> Unit,
+    val entfernen: (Long) -> Unit,
+    val tischLoeschen: (Long) -> Unit,
     val mischen: () -> Unit,
     val blickrichtung: () -> Unit,
 )
 
-/** Laufender Drag: was wird gezogen, wo ist der Finger (Root-Koordinaten). */
+/** Laufender Drag: ein Schüler (aus Leiste oder Slot) oder ein ganzer Tisch. */
 private sealed interface Drag {
     val position: Offset
     data class Schueler(val schueler: de.namio.core.model.Schueler, override val position: Offset) : Drag
-    data class Platz(val platz: Sitzplatz, val schueler: de.namio.core.model.Schueler?, override val position: Offset) : Drag
+    data class Tisch(val tisch: de.namio.core.model.Tisch, override val position: Offset) : Drag
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -163,7 +163,7 @@ private fun SitzplanInhalt(
     var loeschenFrage by rememberSaveable { mutableStateOf(false) }
     var beschriftenDialog by rememberSaveable { mutableStateOf(false) }
     var menueOffen by remember { mutableStateOf(false) }
-    var ausgewaehlterPlatz by remember { mutableStateOf<Long?>(null) }
+    var ausgewaehlterTisch by remember { mutableStateOf<Long?>(null) }
     var ausgewaehlterSchueler by remember { mutableStateOf<Long?>(null) }
     var drag by remember { mutableStateOf<Drag?>(null) }
     var zoom by rememberSaveable { mutableStateOf(1f) }
@@ -172,14 +172,13 @@ private fun SitzplanInhalt(
     var leiste by remember { mutableStateOf<Rect?>(null) }
     var wurzel by remember { mutableStateOf(Offset.Zero) }
     val plan = state.aktiv
+    val best = state.bestuhlung
 
     /** Root-Punkt → normierte Raumkoordinate (Modell), oder null außerhalb der Fläche. */
     fun raumKoordinate(punkt: Offset): Pair<Float, Float>? {
         val f = flaeche ?: return null
         if (!f.contains(punkt)) return null
-        val ax = (punkt.x - f.left) / f.width
-        val ay = (punkt.y - f.top) / f.height
-        return SitzplanLogik.modellKoordinate(ax, ay, state.blickrichtung)
+        return SitzplanLogik.modellKoordinate((punkt.x - f.left) / f.width, (punkt.y - f.top) / f.height, state.blickrichtung)
     }
 
     fun ablegen(d: Drag) {
@@ -189,14 +188,7 @@ private fun SitzplanInhalt(
                 raum != null -> aktionen.ablegen(d.schueler.id, raum.first, raum.second)
                 leiste?.contains(d.position) == true -> aktionen.entfernen(d.schueler.id)
             }
-            is Drag.Platz -> when {
-                raum != null -> {
-                    val ziel = plan?.let { SitzplanLogik.platzBei(state.plaetze.filter { p -> p.id != d.platz.id }, raum.first, raum.second, it.spalten, it.reihen) }
-                    if (ziel != null && d.schueler != null) aktionen.ablegen(d.schueler.id, raum.first, raum.second)
-                    else aktionen.verschieben(d.platz.id, raum.first, raum.second)
-                }
-                leiste?.contains(d.position) == true && d.schueler != null -> aktionen.entfernen(d.schueler.id)
-            }
+            is Drag.Tisch -> if (raum != null) aktionen.verschieben(d.tisch.id, raum.first, raum.second)
         }
     }
 
@@ -205,22 +197,14 @@ private fun SitzplanInhalt(
             TopAppBar(
                 title = { Text(stringResource(R.string.sitzplan_titel, state.klasse?.name ?: "")) },
                 navigationIcon = {
-                    IconButton(onClick = onZurueck) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.zurueck))
-                    }
+                    IconButton(onClick = onZurueck) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.zurueck)) }
                 },
                 actions = {
                     if (plan != null) {
-                        IconButton(onClick = aktionen.blickrichtung) {
-                            Icon(Icons.Default.Cameraswitch, contentDescription = stringResource(R.string.sitzplan_blickrichtung))
-                        }
-                        IconButton(onClick = aktionen.mischen) {
-                            Icon(Icons.Default.Shuffle, contentDescription = stringResource(R.string.sitzplan_mischen))
-                        }
+                        IconButton(onClick = aktionen.blickrichtung) { Icon(Icons.Default.Cameraswitch, contentDescription = stringResource(R.string.sitzplan_blickrichtung)) }
+                        IconButton(onClick = aktionen.mischen) { Icon(Icons.Default.Shuffle, contentDescription = stringResource(R.string.sitzplan_mischen)) }
                         Box {
-                            IconButton(onClick = { menueOffen = true }) {
-                                Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.mehr))
-                            }
+                            IconButton(onClick = { menueOffen = true }) { Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.mehr)) }
                             DropdownMenu(expanded = menueOffen, onDismissRequest = { menueOffen = false }) {
                                 DropdownMenuItem(text = { Text(stringResource(R.string.sitzplan_neu)) }, onClick = { menueOffen = false; neuDialog = true })
                                 DropdownMenuItem(text = { Text(stringResource(R.string.sitzplan_bearbeiten)) }, onClick = { menueOffen = false; bearbeitenDialog = true })
@@ -235,12 +219,7 @@ private fun SitzplanInhalt(
             )
         },
     ) { innen ->
-        Box(
-            Modifier
-                .fillMaxSize()
-                .padding(innen)
-                .onGloballyPositioned { wurzel = it.boundsInRoot().topLeft },
-        ) {
+        Box(Modifier.fillMaxSize().padding(innen).onGloballyPositioned { wurzel = it.boundsInRoot().topLeft }) {
             if (!state.laedt && plan == null) {
                 Column(Modifier.align(Alignment.Center).padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(stringResource(R.string.sitzplan_keiner), textAlign = TextAlign.Center)
@@ -252,7 +231,7 @@ private fun SitzplanInhalt(
                     }
                 }
             } else if (plan != null) {
-                val gewaehlt = state.plaetze.firstOrNull { it.id == ausgewaehlterPlatz }
+                val gewaehlt = best.tisch(ausgewaehlterTisch ?: -1)
                 Column(Modifier.fillMaxSize()) {
                     if (state.plaene.size > 1) {
                         LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -278,88 +257,98 @@ private fun SitzplanInhalt(
                         IconButton(onClick = { zoom = (zoom * 1.25f).coerceIn(ZOOM_MIN, ZOOM_MAX) }) { Icon(Icons.Default.ZoomIn, contentDescription = stringResource(R.string.sitzplan_vergroessern)) }
                     }
                     BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
-                      val viewport = maxWidth
-                      Box(
-                        Modifier
-                            .fillMaxSize()
-                            .transformable(zoomGeste)
-                            .verticalScroll(rememberScrollState())
-                            .horizontalScroll(rememberScrollState()),
-                      ) {
-                       Box(Modifier.widthIn(min = viewport), contentAlignment = Alignment.TopCenter) {
-                        SitzplanFlaeche(
-                            plan = plan,
-                            plaetze = state.plaetze,
-                            schuelerProId = state.schuelerProId,
-                            blickrichtung = state.blickrichtung,
-                            fotoStore = fotoStore,
-                            zoom = zoom,
-                            modifier = Modifier.padding(8.dp),
-                            rasterZeigen = plan.einrasten,
-                            markierung = { if (it.id == ausgewaehlterPlatz) PlatzMarkierung.AUSGEWAEHLT else PlatzMarkierung.KEINE },
-                            flaechenModifier = Modifier
-                                .onGloballyPositioned { flaeche = it.boundsInRoot() }
-                                .pointerInput(plan.id, ausgewaehlterSchueler, state.blickrichtung) {
-                                    detectTapGestures { lokal ->
-                                        val f = flaeche ?: return@detectTapGestures
-                                        val raum = raumKoordinate(f.topLeft + lokal) ?: return@detectTapGestures
-                                        val s = ausgewaehlterSchueler
-                                        if (s != null) {
-                                            aktionen.ablegen(s, raum.first, raum.second)
-                                            ausgewaehlterSchueler = null
-                                        } else if (ausgewaehlterPlatz != null) {
-                                            ausgewaehlterPlatz = null
-                                        } else {
-                                            aktionen.leererStuhl(raum.first, raum.second)
-                                        }
-                                    }
-                                },
-                            platzModifier = { platz ->
-                                val sitzender = platz.schuelerId?.let(state.schuelerProId::get)
-                                Modifier
-                                    .pointerInput(platz.id, ausgewaehlterSchueler) {
-                                        detectTapGestures {
-                                            val s = ausgewaehlterSchueler
-                                            if (s != null && !platz.istMoebel) {
-                                                aktionen.ablegen(s, platz.x, platz.y)
-                                                ausgewaehlterSchueler = null
-                                            } else {
-                                                ausgewaehlterPlatz = if (ausgewaehlterPlatz == platz.id) null else platz.id
+                        val viewport = maxWidth
+                        Box(Modifier.fillMaxSize().transformable(zoomGeste).verticalScroll(rememberScrollState()).horizontalScroll(rememberScrollState())) {
+                            Box(Modifier.widthIn(min = viewport), contentAlignment = Alignment.TopCenter) {
+                                SitzplanFlaeche(
+                                    plan = plan,
+                                    bestuhlung = best,
+                                    schuelerProId = state.schuelerProId,
+                                    blickrichtung = state.blickrichtung,
+                                    fotoStore = fotoStore,
+                                    zoom = zoom,
+                                    basisBreite = (viewport - 16.dp).coerceAtMost(BASIS_BREITE),
+                                    modifier = Modifier.padding(8.dp),
+                                    rasterZeigen = plan.einrasten,
+                                    tischMarkierung = { it.id == ausgewaehlterTisch },
+                                    flaechenModifier = Modifier
+                                        .onGloballyPositioned { flaeche = it.boundsInRoot() }
+                                        .pointerInput(plan.id, ausgewaehlterSchueler, ausgewaehlterTisch, state.blickrichtung) {
+                                            detectTapGestures { lokal ->
+                                                val f = flaeche ?: return@detectTapGestures
+                                                val raum = raumKoordinate(f.topLeft + lokal) ?: return@detectTapGestures
+                                                val s = ausgewaehlterSchueler
+                                                when {
+                                                    s != null -> { aktionen.ablegen(s, raum.first, raum.second); ausgewaehlterSchueler = null }
+                                                    ausgewaehlterTisch != null -> ausgewaehlterTisch = null
+                                                    else -> aktionen.tischHinzufuegen(raum.first, raum.second, 2)
+                                                }
                                             }
-                                        }
-                                    }
-                                    .dragQuelle(
-                                        key = platz.id,
-                                        anker = {
-                                            val f = flaeche ?: Rect.Zero
-                                            val a = SitzplanLogik.anzeige(platz, state.blickrichtung)
-                                            val g = f.width / plan.spalten * 0.92f
-                                            Offset(f.left + f.width * a.x - g / 2, f.top + f.height * a.y - g / 2)
                                         },
-                                        start = { Drag.Platz(platz, sitzender, it) },
-                                        onDrag = { drag = it },
-                                        onDrop = { drag = null; ablegen(it) },
-                                    )
-                            },
-                        )
+                                    tischModifier = { tisch ->
+                                        Modifier
+                                            .pointerInput(tisch.id, ausgewaehlterSchueler) {
+                                                detectTapGestures {
+                                                    if (ausgewaehlterSchueler == null) ausgewaehlterTisch = if (ausgewaehlterTisch == tisch.id) null else tisch.id
+                                                }
+                                            }
+                                            .dragQuelle(
+                                                key = "tisch" + tisch.id,
+                                                anker = { tischAnker(flaeche, plan.spalten, plan.reihen, tisch, state.blickrichtung) },
+                                                start = { Drag.Tisch(tisch, it) },
+                                                onDrag = { drag = it },
+                                                onDrop = { drag = null; ablegen(it) },
+                                            )
+                                    },
+                                    slotModifier = { tisch, slot ->
+                                        val sitzender = slot.schuelerId?.let(state.schuelerProId::get)
+                                        Modifier
+                                            .pointerInput(slot.id, ausgewaehlterSchueler) {
+                                                detectTapGestures {
+                                                    val s = ausgewaehlterSchueler
+                                                    if (s != null) {
+                                                        val (x, y) = SitzplanLogik.slotPosition(tisch, slot.slot, plan.spalten, plan.reihen)
+                                                        aktionen.ablegen(s, x, y)
+                                                        ausgewaehlterSchueler = null
+                                                    } else {
+                                                        ausgewaehlterTisch = if (ausgewaehlterTisch == tisch.id) null else tisch.id
+                                                    }
+                                                }
+                                            }
+                                            .then(
+                                                if (sitzender != null) {
+                                                    Modifier.dragQuelle(
+                                                        key = "slot" + slot.id,
+                                                        anker = { slotAnker(flaeche, plan.spalten, plan.reihen, tisch, slot.slot, state.blickrichtung) },
+                                                        start = { Drag.Schueler(sitzender, it) },
+                                                        onDrag = { drag = it },
+                                                        onDrop = { drag = null; ablegen(it) },
+                                                    )
+                                                } else {
+                                                    Modifier
+                                                },
+                                            )
+                                    },
+                                )
+                            }
+                        }
                     }
-                       }
-                      }
                     if (gewaehlt != null) {
-                        PlatzWerkzeuge(
-                            platz = gewaehlt,
+                        TischWerkzeuge(
+                            tisch = gewaehlt,
+                            sitzende = best.plaetzeVon(gewaehlt.id).count { it.schuelerId != null },
                             onDrehen = { aktionen.drehen(gewaehlt.id, it) },
-                            onPartner = { aktionen.partnerplatz(gewaehlt.id) },
+                            onPlaetze = { aktionen.plaetzeAendern(gewaehlt.id, it) },
                             onBeschriften = { beschriftenDialog = true },
-                            onSchuelerEntfernen = { gewaehlt.schuelerId?.let(aktionen.entfernen) },
-                            onLoeschen = { aktionen.platzLoeschen(gewaehlt.id); ausgewaehlterPlatz = null },
+                            onAlleEntfernen = { best.plaetzeVon(gewaehlt.id).mapNotNull { it.schuelerId }.forEach(aktionen.entfernen) },
+                            onLoeschen = { aktionen.tischLoeschen(gewaehlt.id); ausgewaehlterTisch = null },
                         )
                     }
                     UnplatziertLeiste(
                         schueler = state.unplatziert,
                         ausgewaehlt = ausgewaehlterSchueler,
                         fotoStore = fotoStore,
-                        onTipp = { ausgewaehlterSchueler = if (ausgewaehlterSchueler == it.id) null else it.id; ausgewaehlterPlatz = null },
+                        onTipp = { ausgewaehlterSchueler = if (ausgewaehlterSchueler == it.id) null else it.id; ausgewaehlterTisch = null },
                         onDrag = { drag = it },
                         onDrop = { drag = null; ablegen(it) },
                         modifier = Modifier.onGloballyPositioned { leiste = it.boundsInRoot() },
@@ -368,7 +357,6 @@ private fun SitzplanInhalt(
             }
             drag?.let { d ->
                 val halb = with(LocalDensity.current) { 36.dp.toPx() }
-                val schueler = when (d) { is Drag.Schueler -> d.schueler; is Drag.Platz -> d.schueler }
                 Box(
                     Modifier
                         .zIndex(10f)
@@ -378,8 +366,9 @@ private fun SitzplanInhalt(
                         .background(MaterialTheme.colorScheme.primaryContainer),
                     contentAlignment = Alignment.Center,
                 ) {
-                    if (schueler != null) {
-                        SchuelerFoto(datei = schueler.fotoDatei?.let(fotoStore::datei), beschreibung = schueler.vollerName, modifier = Modifier.size(56.dp).clip(RoundedCornerShape(8.dp)))
+                    when (d) {
+                        is Drag.Schueler -> SchuelerFoto(datei = d.schueler.fotoDatei?.let(fotoStore::datei), beschreibung = d.schueler.vollerName, modifier = Modifier.size(56.dp).clip(RoundedCornerShape(8.dp)))
+                        is Drag.Tisch -> Text(d.tisch.beschriftung ?: stringResource(R.string.sitzplan_tisch), style = MaterialTheme.typography.labelMedium)
                     }
                 }
             }
@@ -387,10 +376,7 @@ private fun SitzplanInhalt(
     }
 
     if (neuDialog) {
-        NeuerPlanDialog(
-            onAbbrechen = { neuDialog = false },
-            onOk = { n, s, r, v, b -> neuDialog = false; aktionen.planAnlegen(n, s, r, v, b) },
-        )
+        NeuerPlanDialog(onAbbrechen = { neuDialog = false }, onOk = { n, s, r, v, b -> neuDialog = false; aktionen.planAnlegen(n, s, r, v, b) })
     }
     if (bearbeitenDialog && plan != null) {
         PlanBearbeitenDialog(
@@ -399,7 +385,7 @@ private fun SitzplanInhalt(
             onOk = { n, s, r, e -> bearbeitenDialog = false; aktionen.planAendern(n, s, r, e) },
         )
     }
-    val zuBeschriften = state.plaetze.firstOrNull { it.id == ausgewaehlterPlatz }
+    val zuBeschriften = best.tisch(ausgewaehlterTisch ?: -1)
     if (beschriftenDialog && zuBeschriften != null) {
         BeschriftenDialog(
             start = zuBeschriften.beschriftung ?: "",
@@ -418,6 +404,24 @@ private fun SitzplanInhalt(
     }
 }
 
+/** Root-Position der linken oberen Ecke der (ungedrehten) Tischkachel – für Drag-Startpunkte. */
+private fun tischAnker(flaeche: Rect?, spalten: Int, reihen: Int, tisch: Tisch, blickrichtung: de.namio.core.model.Blickrichtung): Offset {
+    val f = flaeche ?: return Offset.Zero
+    val a = SitzplanLogik.anzeige(tisch, blickrichtung)
+    val einheit = f.width / spalten
+    val b = einheit * tisch.plaetze.coerceAtLeast(1) * 0.96f
+    val h = einheit * TISCH_TIEFE
+    return Offset(f.left + f.width * a.x - b / 2, f.top + f.height * a.y - h / 2)
+}
+
+private fun slotAnker(flaeche: Rect?, spalten: Int, reihen: Int, tisch: Tisch, slot: Int, blickrichtung: de.namio.core.model.Blickrichtung): Offset {
+    val f = flaeche ?: return Offset.Zero
+    val (mx, my) = SitzplanLogik.slotPosition(tisch, slot, spalten, reihen)
+    val (ax, ay) = SitzplanLogik.modellKoordinate(mx, my, blickrichtung)
+    val einheit = f.width / spalten
+    return Offset(f.left + f.width * ax - einheit / 2, f.top + f.height * ay - einheit * TISCH_TIEFE / 2)
+}
+
 /** Long-Press startet den Drag. [anker] liefert die Root-Position des Elements, damit Fingerpositionen absolut sind. */
 private fun Modifier.dragQuelle(
     key: Any,
@@ -428,48 +432,47 @@ private fun Modifier.dragQuelle(
 ): Modifier = pointerInput(key) {
     var aktuell = Offset.Zero
     var laufend: Drag? = null
+    fun mit(pos: Offset): Drag? = when (val l = laufend) {
+        is Drag.Schueler -> l.copy(position = pos)
+        is Drag.Tisch -> l.copy(position = pos)
+        null -> null
+    }
     detectDragGesturesAfterLongPress(
-        onDragStart = { lokal -> aktuell = anker() + lokal; laufend = start(aktuell); onDrag(laufend!!) },
-        onDrag = { change, delta ->
-            change.consume()
-            aktuell += delta
-            laufend = when (val l = laufend) {
-                is Drag.Schueler -> l.copy(position = aktuell)
-                is Drag.Platz -> l.copy(position = aktuell)
-                null -> null
-            }
-            laufend?.let(onDrag)
-        },
+        onDragStart = { lokal -> aktuell = anker() + lokal; laufend = start(aktuell); laufend?.let(onDrag) },
+        onDrag = { change, delta -> change.consume(); aktuell += delta; laufend = mit(aktuell); laufend?.let(onDrag) },
         onDragEnd = { laufend?.let(onDrop) },
-        onDragCancel = { laufend?.let { onDrop(when (it) { is Drag.Schueler -> it.copy(position = Offset(-1f, -1f)); is Drag.Platz -> it.copy(position = Offset(-1f, -1f)) }) } },
+        onDragCancel = { mit(Offset(-1f, -1f))?.let(onDrop) },
     )
 }
 
 @Composable
-private fun PlatzWerkzeuge(
-    platz: Sitzplatz,
+private fun TischWerkzeuge(
+    tisch: Tisch,
+    sitzende: Int,
     onDrehen: (Float) -> Unit,
-    onPartner: () -> Unit,
+    onPlaetze: (Int) -> Unit,
     onBeschriften: () -> Unit,
-    onSchuelerEntfernen: () -> Unit,
+    onAlleEntfernen: () -> Unit,
     onLoeschen: () -> Unit,
 ) {
     Row(
         Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceContainerHigh).padding(horizontal = 8.dp, vertical = 2.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
+        horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(onClick = { onDrehen(-15f) }) { Icon(Icons.Default.RotateLeft, contentDescription = stringResource(R.string.sitzplan_drehen_links)) }
-        Text("${platz.drehung.roundToInt()}°", style = MaterialTheme.typography.labelMedium)
+        Text("${tisch.drehung.roundToInt()}°", style = MaterialTheme.typography.labelMedium)
         IconButton(onClick = { onDrehen(15f) }) { Icon(Icons.Default.RotateRight, contentDescription = stringResource(R.string.sitzplan_drehen_rechts)) }
-        if (!platz.istMoebel) {
-            IconButton(onClick = onPartner) { Icon(Icons.Default.GroupAdd, contentDescription = stringResource(R.string.sitzplan_partnerplatz)) }
+        if (!tisch.istMoebel) {
+            Spacer(Modifier.size(8.dp))
+            IconButton(onClick = { onPlaetze(tisch.plaetze - 1) }, enabled = tisch.plaetze > 1) { Icon(Icons.Default.Remove, contentDescription = stringResource(R.string.sitzplan_platz_weniger)) }
+            Text(stringResource(R.string.sitzplan_plaetze_anzahl, tisch.plaetze), style = MaterialTheme.typography.labelMedium)
+            IconButton(onClick = { onPlaetze(tisch.plaetze + 1) }, enabled = tisch.plaetze < SitzplanLogik.MAX_PLAETZE) { Icon(Icons.Default.Add, contentDescription = stringResource(R.string.sitzplan_platz_mehr)) }
         }
-        if (platz.schuelerId == null) {
+        if (sitzende == 0) {
             IconButton(onClick = onBeschriften) { Icon(Icons.Default.Label, contentDescription = stringResource(R.string.sitzplan_beschriften)) }
-        }
-        if (platz.schuelerId != null) {
-            IconButton(onClick = onSchuelerEntfernen) { Icon(Icons.Default.PersonRemove, contentDescription = stringResource(R.string.sitzplan_schueler_entfernen)) }
+        } else {
+            IconButton(onClick = onAlleEntfernen) { Icon(Icons.Default.PersonRemove, contentDescription = stringResource(R.string.sitzplan_schueler_entfernen)) }
         }
         IconButton(onClick = onLoeschen) { Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.sitzplan_platz_loeschen)) }
     }
@@ -524,7 +527,7 @@ private fun UnplatziertLeiste(
                         .background(if (s.id == ausgewaehlt) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface)
                         .clickable { onTipp(s) }
                         .onGloballyPositioned { anker = it.boundsInRoot().topLeft }
-                        .dragQuelle(key = s.id, anker = { anker }, start = { Drag.Schueler(s, it) }, onDrag = onDrag, onDrop = onDrop)
+                        .dragQuelle(key = "leiste" + s.id, anker = { anker }, start = { Drag.Schueler(s, it) }, onDrag = onDrag, onDrop = onDrop)
                         .padding(6.dp),
                 ) {
                     SchuelerFoto(datei = s.fotoDatei?.let(fotoStore::datei), beschreibung = s.vollerName, modifier = Modifier.size(52.dp).clip(RoundedCornerShape(8.dp)))
@@ -546,10 +549,7 @@ private fun vorlageName(v: SitzplanVorlage): String = stringResource(
 )
 
 @Composable
-private fun NeuerPlanDialog(
-    onAbbrechen: () -> Unit,
-    onOk: (String, Int, Int, SitzplanVorlage, Boolean) -> Unit,
-) {
+private fun NeuerPlanDialog(onAbbrechen: () -> Unit, onOk: (String, Int, Int, SitzplanVorlage, Boolean) -> Unit) {
     var name by rememberSaveable { mutableStateOf("") }
     var spalten by rememberSaveable { mutableStateOf(SitzplanRepository.STANDARD_SPALTEN.toString()) }
     var reihen by rememberSaveable { mutableStateOf(SitzplanRepository.STANDARD_REIHEN.toString()) }
@@ -567,10 +567,8 @@ private fun NeuerPlanDialog(
                 OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text(stringResource(R.string.sitzplan_name)) }, placeholder = { Text(standardName) }, singleLine = true)
                 RaumFelder(spalten, reihen, { spalten = it }, { reihen = it })
                 Text(stringResource(R.string.sitzplan_vorlage), style = MaterialTheme.typography.labelLarge)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
-                    SitzplanVorlage.entries.forEach { v ->
-                        FilterChip(selected = v == vorlage, onClick = { vorlage = v }, label = { Text(vorlageName(v)) })
-                    }
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
+                    SitzplanVorlage.entries.forEach { v -> FilterChip(selected = v == vorlage, onClick = { vorlage = v }, label = { Text(vorlageName(v)) }) }
                 }
                 if (vorlage != SitzplanVorlage.LEER) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -580,22 +578,13 @@ private fun NeuerPlanDialog(
                 }
             }
         },
-        confirmButton = {
-            TextButton(enabled = gueltig, onClick = { onOk(name.ifBlank { standardName }, s ?: 12, r ?: 9, vorlage, vorbelegen) }) { Text(stringResource(R.string.anlegen)) }
-        },
+        confirmButton = { TextButton(enabled = gueltig, onClick = { onOk(name.ifBlank { standardName }, s ?: 12, r ?: 9, vorlage, vorbelegen) }) { Text(stringResource(R.string.anlegen)) } },
         dismissButton = { TextButton(onClick = onAbbrechen) { Text(stringResource(R.string.abbrechen)) } },
     )
 }
 
 @Composable
-private fun PlanBearbeitenDialog(
-    plan: String,
-    spalten: Int,
-    reihen: Int,
-    einrasten: Boolean,
-    onAbbrechen: () -> Unit,
-    onOk: (String, Int, Int, Boolean) -> Unit,
-) {
+private fun PlanBearbeitenDialog(plan: String, spalten: Int, reihen: Int, einrasten: Boolean, onAbbrechen: () -> Unit, onOk: (String, Int, Int, Boolean) -> Unit) {
     var name by rememberSaveable { mutableStateOf(plan) }
     var sp by rememberSaveable { mutableStateOf(spalten.toString()) }
     var re by rememberSaveable { mutableStateOf(reihen.toString()) }
@@ -628,10 +617,6 @@ private fun RaumFelder(spalten: String, reihen: String, onSpalten: (String) -> U
             OutlinedTextField(value = spalten, onValueChange = { onSpalten(it.filter(Char::isDigit).take(2)) }, label = { Text(stringResource(R.string.sitzplan_breite)) }, singleLine = true, modifier = Modifier.weight(1f))
             OutlinedTextField(value = reihen, onValueChange = { onReihen(it.filter(Char::isDigit).take(2)) }, label = { Text(stringResource(R.string.sitzplan_tiefe)) }, singleLine = true, modifier = Modifier.weight(1f))
         }
-        Text(
-            stringResource(R.string.sitzplan_raum_hinweis, SitzplanRepository.MIN_EINHEITEN, SitzplanRepository.MAX_EINHEITEN),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Text(stringResource(R.string.sitzplan_raum_hinweis, SitzplanRepository.MIN_EINHEITEN, SitzplanRepository.MAX_EINHEITEN), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

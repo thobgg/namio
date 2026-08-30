@@ -4,39 +4,41 @@ import androidx.room.withTransaction
 import de.namio.core.data.NamioDatabase
 import de.namio.core.data.dao.SitzplanDao
 import de.namio.core.data.dao.SitzplatzDao
+import de.namio.core.data.dao.TischDao
 import de.namio.core.data.entity.SitzplanEntity
+import de.namio.core.model.Bestuhlung
 import de.namio.core.model.Sitzplan
 import de.namio.core.model.SitzplanVorlage
-import de.namio.core.model.Sitzplatz
 import de.namio.core.sitzplan.SitzplanLogik
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Datenzugriff für Sitzpläne und Plätze. Alle Änderungen an Plätzen laufen über [SitzplanLogik]. */
+/** Datenzugriff für Sitzpläne. Alle Änderungen an der Bestuhlung laufen über [SitzplanLogik]. */
 @Singleton
 class SitzplanRepository @Inject constructor(
     private val db: NamioDatabase,
     private val sitzplanDao: SitzplanDao,
+    private val tischDao: TischDao,
     private val sitzplatzDao: SitzplatzDao,
 ) {
     fun observePlaene(klasseId: Long): Flow<List<Sitzplan>> =
         sitzplanDao.observeFuerKlasse(klasseId).map { liste -> liste.map { it.zuModell() } }
 
-    fun observePlaetze(sitzplanId: Long): Flow<List<Sitzplatz>> =
-        sitzplatzDao.observeFuerPlan(sitzplanId).map { liste -> liste.map { it.zuModell() } }
+    fun observeBestuhlung(sitzplanId: Long): Flow<Bestuhlung> = combine(
+        tischDao.observeFuerPlan(sitzplanId),
+        sitzplatzDao.observeFuerPlan(sitzplanId),
+    ) { tische, plaetze -> Bestuhlung(tische.map { it.zuModell() }, plaetze.map { it.zuModell() }) }
 
-    /** Standardplan der Klasse mit Plätzen, `null` wenn es keinen Plan gibt. */
-    suspend fun standardplan(klasseId: Long): Pair<Sitzplan, List<Sitzplatz>>? {
+    /** Standardplan der Klasse mit Bestuhlung, `null` wenn es keinen Plan gibt. */
+    suspend fun standardplan(klasseId: Long): Pair<Sitzplan, Bestuhlung>? {
         val plan = sitzplanDao.standardFuerKlasse(klasseId) ?: return null
-        return plan.zuModell() to sitzplatzDao.fuerPlan(plan.id).map { it.zuModell() }
+        return plan.zuModell() to lies(plan.id)
     }
 
-    /**
-     * Legt einen Plan an, optional mit Vorlage und Vorbelegung durch [schuelerIds].
-     * Der erste Plan einer Klasse wird automatisch Standard.
-     */
+    /** Legt einen Plan an, optional mit Vorlage und Vorbelegung. Der erste Plan einer Klasse wird Standard. */
     suspend fun anlegen(
         klasseId: Long,
         name: String,
@@ -51,12 +53,10 @@ class SitzplanRepository @Inject constructor(
         val id = sitzplanDao.insert(
             SitzplanEntity(klasseId = klasseId, name = name.trim().ifBlank { "Sitzplan" }, spalten = s, reihen = r, istStandard = erster),
         )
-        val plaetze = SitzplanLogik.vorlage(vorlage, id, s, r, schuelerIds)
-        if (plaetze.isNotEmpty()) sitzplatzDao.upsertAlle(plaetze.map { it.zuEntity() })
+        schreibeBestuhlung(id, SitzplanLogik.vorlage(vorlage, id, s, r, schuelerIds))
         id
     }
 
-    /** Name, Raumgröße und Einrasten ändern. Plätze bleiben (normierte Koordinaten). */
     suspend fun aendern(planId: Long, name: String, spalten: Int, reihen: Int, einrasten: Boolean) {
         val plan = sitzplanDao.get(planId) ?: return
         sitzplanDao.update(
@@ -74,7 +74,6 @@ class SitzplanRepository @Inject constructor(
         sitzplanDao.setzeStandard(plan.klasseId, planId)
     }
 
-    /** Löscht den Plan; war er Standard, rückt der nächste nach. */
     suspend fun loeschen(planId: Long) {
         val plan = sitzplanDao.get(planId) ?: return
         db.withTransaction {
@@ -85,44 +84,41 @@ class SitzplanRepository @Inject constructor(
         }
     }
 
-    suspend fun ablegen(planId: Long, schuelerId: Long, x: Float, y: Float) = schreibe(planId) { plan, plaetze ->
-        SitzplanLogik.ablegen(plaetze, planId, schuelerId, x, y, plan.spalten, plan.reihen, plan.einrasten)
-    }
+    suspend fun ablegen(planId: Long, schuelerId: Long, x: Float, y: Float) = schreibe(planId) { p, b -> SitzplanLogik.ablegen(b, planId, schuelerId, x, y, p.spalten, p.reihen, p.einrasten) }
+    suspend fun tischHinzufuegen(planId: Long, x: Float, y: Float, plaetze: Int, beschriftung: String?) = schreibe(planId) { p, b -> SitzplanLogik.tischHinzufuegen(b, planId, x, y, 0f, plaetze, beschriftung, p.spalten, p.reihen, p.einrasten) }
+    suspend fun verschieben(planId: Long, tischId: Long, x: Float, y: Float) = schreibe(planId) { p, b -> SitzplanLogik.verschieben(b, tischId, x, y, p.spalten, p.reihen, p.einrasten) }
+    suspend fun drehen(planId: Long, tischId: Long, grad: Float) = schreibe(planId) { _, b -> SitzplanLogik.drehen(b, tischId, grad) }
+    suspend fun plaetzeAendern(planId: Long, tischId: Long, plaetze: Int) = schreibe(planId) { _, b -> SitzplanLogik.plaetzeAendern(b, tischId, plaetze) }
+    suspend fun beschriften(planId: Long, tischId: Long, text: String) = schreibe(planId) { _, b -> SitzplanLogik.beschriften(b, tischId, text) }
+    suspend fun entfernen(planId: Long, schuelerId: Long) = schreibe(planId) { _, b -> SitzplanLogik.entfernen(b, schuelerId) }
+    suspend fun tischLoeschen(planId: Long, tischId: Long) = schreibe(planId) { _, b -> SitzplanLogik.tischLoeschen(b, tischId) }
+    suspend fun mischen(planId: Long) = schreibe(planId) { _, b -> SitzplanLogik.mischen(b) }
 
-    suspend fun verschieben(planId: Long, platzId: Long, x: Float, y: Float) = schreibe(planId) { plan, plaetze ->
-        SitzplanLogik.verschieben(plaetze, platzId, x, y, plan.spalten, plan.reihen, plan.einrasten)
-    }
+    private suspend fun lies(planId: Long) = Bestuhlung(
+        tischDao.fuerPlan(planId).map { it.zuModell() },
+        sitzplatzDao.fuerPlan(planId).map { it.zuModell() },
+    )
 
-    suspend fun drehen(planId: Long, platzId: Long, grad: Float) = schreibe(planId) { _, plaetze -> SitzplanLogik.drehen(plaetze, platzId, grad) }
-
-    suspend fun entfernen(planId: Long, schuelerId: Long) = schreibe(planId) { _, plaetze -> SitzplanLogik.entfernen(plaetze, schuelerId) }
-
-    suspend fun platzLoeschen(planId: Long, platzId: Long) = schreibe(planId) { _, plaetze -> SitzplanLogik.platzLoeschen(plaetze, platzId) }
-
-    suspend fun leererStuhl(planId: Long, x: Float, y: Float) = schreibe(planId) { plan, plaetze ->
-        SitzplanLogik.leererStuhl(plaetze, planId, x, y, plan.spalten, plan.reihen, plan.einrasten)
-    }
-
-    suspend fun partnerplatz(planId: Long, platzId: Long) = schreibe(planId) { plan, plaetze ->
-        SitzplanLogik.partnerplatz(plaetze, platzId, plan.spalten, plan.reihen)
-    }
-
-    suspend fun beschriften(planId: Long, platzId: Long, text: String) = schreibe(planId) { _, plaetze -> SitzplanLogik.beschriften(plaetze, platzId, text) }
-
-    suspend fun mischen(planId: Long) = schreibe(planId) { _, plaetze -> SitzplanLogik.mischen(plaetze) }
-
-    /**
-     * Liest Plan und Plätze, wendet [transform] an und schreibt das Ergebnis komplett zurück.
-     * Erst löschen, dann einfügen – so kollidiert der Unique-Index beim Tausch nicht.
-     */
-    private suspend fun schreibe(planId: Long, transform: (Sitzplan, List<Sitzplatz>) -> List<Sitzplatz>) {
+    /** Liest Plan und Bestuhlung, wendet [transform] an und schreibt das Ergebnis komplett zurück. */
+    private suspend fun schreibe(planId: Long, transform: (Sitzplan, Bestuhlung) -> Bestuhlung) {
         db.withTransaction {
             val plan = sitzplanDao.get(planId)?.zuModell() ?: return@withTransaction
-            val alt = sitzplatzDao.fuerPlan(planId).map { it.zuModell() }
+            val alt = lies(planId)
             val neu = transform(plan, alt)
             if (neu == alt) return@withTransaction
-            sitzplatzDao.loescheAlleFuerPlan(planId)
-            sitzplatzDao.upsertAlle(neu.map { it.zuEntity() })
+            schreibeBestuhlung(planId, neu)
+        }
+    }
+
+    /** Erst alles löschen, dann Tische (neue bekommen echte IDs) und Plätze einfügen. */
+    private suspend fun schreibeBestuhlung(planId: Long, b: Bestuhlung) {
+        tischDao.loescheAlleFuerPlan(planId)
+        sitzplatzDao.loescheAlleFuerPlan(planId)
+        val idMap = HashMap<Long, Long>()
+        for (t in b.tische) idMap[t.id] = tischDao.insert(t.zuEntity())
+        for (p in b.plaetze) {
+            val tischId = idMap[p.tischId] ?: continue
+            sitzplatzDao.insert(p.zuEntity(tischId = tischId).copy(id = 0))
         }
     }
 

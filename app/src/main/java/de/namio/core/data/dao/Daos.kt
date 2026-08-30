@@ -14,6 +14,7 @@ import de.namio.core.data.entity.QuizSessionEntity
 import de.namio.core.data.entity.SchuelerEntity
 import de.namio.core.data.entity.SitzplanEntity
 import de.namio.core.data.entity.SitzplatzEntity
+import de.namio.core.data.entity.TischEntity
 import de.namio.core.model.QuizModus
 import kotlinx.coroutines.flow.Flow
 
@@ -166,6 +167,21 @@ interface SitzplanDao {
 }
 
 @Dao
+interface TischDao {
+    @Query("SELECT * FROM tisch WHERE sitzplanId = :sitzplanId")
+    fun observeFuerPlan(sitzplanId: Long): Flow<List<TischEntity>>
+
+    @Query("SELECT * FROM tisch WHERE sitzplanId = :sitzplanId")
+    suspend fun fuerPlan(sitzplanId: Long): List<TischEntity>
+
+    @Insert
+    suspend fun insert(tisch: TischEntity): Long
+
+    @Query("DELETE FROM tisch WHERE sitzplanId = :sitzplanId")
+    suspend fun loescheAlleFuerPlan(sitzplanId: Long)
+}
+
+@Dao
 interface SitzplatzDao {
     @Query("SELECT * FROM sitzplatz WHERE sitzplanId = :sitzplanId")
     fun observeFuerPlan(sitzplanId: Long): Flow<List<SitzplatzEntity>>
@@ -191,9 +207,6 @@ interface SitzplatzDao {
     @Query("DELETE FROM sitzplatz WHERE sitzplanId = :sitzplanId")
     suspend fun loescheAlleFuerPlan(sitzplanId: Long)
 
-    @Query("DELETE FROM sitzplatz WHERE id IN (:ids)")
-    suspend fun loesche(ids: List<Long>)
-
-    @Delete
-    suspend fun delete(platz: SitzplatzEntity)
+    @Insert
+    suspend fun insert(platz: SitzplatzEntity): Long
 }

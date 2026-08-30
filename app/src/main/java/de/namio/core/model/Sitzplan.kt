@@ -11,18 +11,39 @@ data class Sitzplan(
     val einrasten: Boolean = true,
 )
 
-/** Ein frei platzierter Platz. [schuelerId] = null ist ein leerer Stuhl. [x]/[y] sind der Mittelpunkt, normiert 0–1. */
-data class Sitzplatz(
+/**
+ * Ein Tisch im Raum: [plaetze] Sitzplätze nebeneinander (0 = Möbel wie Pult oder PC).
+ * [x]/[y] ist der Mittelpunkt, normiert 0–1; [drehung] in Grad im Uhrzeigersinn.
+ * Neue, noch nicht gespeicherte Tische haben eine negative [id].
+ */
+data class Tisch(
     val id: Long,
     val sitzplanId: Long,
-    val schuelerId: Long?,
     val x: Float,
     val y: Float,
     val drehung: Float = 0f,
-    /** Gesetzt bei Möbeln ohne Schüler (Pult, PC, Schrank …). */
+    val plaetze: Int = 1,
     val beschriftung: String? = null,
 ) {
-    val istMoebel: Boolean get() = beschriftung != null
+    val istMoebel: Boolean get() = plaetze == 0
+}
+
+/** Ein Sitzplatz-Slot auf einem Tisch. [schuelerId] = null ist ein leerer Stuhl. */
+data class Sitzplatz(
+    val id: Long,
+    val sitzplanId: Long,
+    val tischId: Long,
+    val slot: Int,
+    val schuelerId: Long?,
+)
+
+/** Tische und Plätze eines Plans zusammen – die Einheit, auf der die Logik arbeitet. */
+data class Bestuhlung(
+    val tische: List<Tisch> = emptyList(),
+    val plaetze: List<Sitzplatz> = emptyList(),
+) {
+    fun plaetzeVon(tischId: Long): List<Sitzplatz> = plaetze.filter { it.tischId == tischId }.sortedBy { it.slot }
+    fun tisch(id: Long): Tisch? = tische.firstOrNull { it.id == id }
 }
 
 /** Darstellung des Plans: von vorn (wie der Lehrer ihn an der Tafel sieht) oder von hinten (wie er auf dem Papier steht). */

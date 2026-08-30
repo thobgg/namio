@@ -12,8 +12,8 @@ import de.namio.core.model.QuizFehler
 import de.namio.core.model.QuizFrage
 import de.namio.core.model.QuizModus
 import de.namio.core.model.Schueler
+import de.namio.core.model.Bestuhlung
 import de.namio.core.model.Sitzplan
-import de.namio.core.model.Sitzplatz
 import de.namio.core.repository.SitzplanRepository
 import de.namio.core.repository.QuizRepository
 import de.namio.ui.navigation.Route
@@ -47,7 +47,7 @@ sealed interface QuizRundePhase {
         val feedback: Feedback? = null,
         /** Nur im Sitzplan-Modus: der gerenderte Plan. */
         val sitzplan: Sitzplan? = null,
-        val plaetze: List<Sitzplatz> = emptyList(),
+        val bestuhlung: Bestuhlung = Bestuhlung(),
     ) : QuizRundePhase
 
     data class Ergebnis(
@@ -80,7 +80,7 @@ class QuizRundeViewModel @Inject constructor(
 
     private var alleSchueler: List<Schueler> = emptyList()
     private var sitzplan: Sitzplan? = null
-    private var plaetze: List<Sitzplatz> = emptyList()
+    private var bestuhlung: Bestuhlung = Bestuhlung()
     private var runde = QuizRunde(emptyList())
     private var sessionId = 0L
     private var sessionStart = 0L
@@ -106,14 +106,14 @@ class QuizRundeViewModel @Inject constructor(
         var mitFoto = alleSchueler.filter { it.fotoDatei != null }.map { it.id }
         if (modus == QuizModus.SITZPLAN) {
             val plan = sitzplanRepository.standardplan(klasseId)
-            val sitzend = plan?.second?.mapNotNull { it.schuelerId }?.toSet().orEmpty()
+            val sitzend = plan?.second?.plaetze?.mapNotNull { it.schuelerId }?.toSet().orEmpty()
             mitFoto = mitFoto.filter { it in sitzend }
             if (plan == null || mitFoto.isEmpty()) {
                 _uiState.update { it.copy(phase = QuizRundePhase.KeinSitzplan) }
                 return
             }
             sitzplan = plan.first
-            plaetze = plan.second
+            bestuhlung = plan.second
         }
         val reihenfolge = when {
             nurSchueler != null -> nurSchueler.filter { it in mitFoto }
@@ -164,7 +164,7 @@ class QuizRundeViewModel @Inject constructor(
                     erledigt = runde.fertig,
                     gesamt = runde.anzahl,
                     sitzplan = sitzplan,
-                    plaetze = plaetze,
+                    bestuhlung = bestuhlung,
                 ),
             )
         }

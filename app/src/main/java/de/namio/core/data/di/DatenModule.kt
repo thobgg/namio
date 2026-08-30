@@ -37,6 +37,7 @@ object DatenModule {
     @Provides fun quizAntwortDao(db: NamioDatabase) = db.quizAntwortDao()
     @Provides fun sitzplanDao(db: NamioDatabase) = db.sitzplanDao()
     @Provides fun sitzplatzDao(db: NamioDatabase) = db.sitzplatzDao()
+    @Provides fun tischDao(db: NamioDatabase) = db.tischDao()
 
     @Provides
     @Singleton

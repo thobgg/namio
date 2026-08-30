@@ -6,6 +6,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -33,54 +35,57 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import de.namio.R
 import de.namio.core.media.FotoStore
+import de.namio.core.model.Bestuhlung
 import de.namio.core.model.Blickrichtung
 import de.namio.core.model.Schueler
 import de.namio.core.model.Sitzplan
 import de.namio.core.model.Sitzplatz
+import de.namio.core.model.Tisch
 import de.namio.core.sitzplan.SitzplanLogik
 import de.namio.ui.components.SchuelerFoto
 import kotlin.math.roundToInt
 
-/** Farbliche Hervorhebung eines Platzes (Quiz-Feedback, Auswahl). */
+/** Farbliche Hervorhebung eines Slots (Quiz-Feedback, Auswahl). */
 enum class PlatzMarkierung { KEINE, AUSGEWAEHLT, RICHTIG, FALSCH }
 
-/** Geometrie der gezeichneten Fläche, um Fingerpositionen in Raumkoordinaten umzurechnen. */
-data class FlaechenGeometrie(val breitePx: Float, val hoehePx: Float, val einheitPx: Float)
+/** Basisbreite des Raums bei Zoom 1 – etwa eine Tabletbreite; kleinere Bildschirme scrollen. */
+val BASIS_BREITE: Dp = 800.dp
+
+/** Verhältnis Tischtiefe zu Platzbreite. */
+const val TISCH_TIEFE = 0.95f
 
 /**
- * Zeichnet einen Sitzplan als freie Fläche im Seitenverhältnis [Sitzplan.spalten]:[Sitzplan.reihen].
- * Plätze werden an ihren normierten Mittelpunkten platziert und gedreht; die Tafel liegt je nach
- * [blickrichtung] oben (von hinten) oder unten (von vorn).
+ * Zeichnet einen Sitzplan: Tische als Rechtecke (Breite = Plätze × Einheit), darauf die Slots.
+ * Die Tafel liegt je nach [blickrichtung] oben (von hinten) oder unten (von vorn).
  */
 @Composable
 fun SitzplanFlaeche(
     plan: Sitzplan,
-    plaetze: List<Sitzplatz>,
+    bestuhlung: Bestuhlung,
     schuelerProId: Map<Long, Schueler>,
     blickrichtung: Blickrichtung,
     fotoStore: FotoStore,
     modifier: Modifier = Modifier,
-    /** 1 = Raum füllt die Breite; größer = Kacheln größer, Fläche wird scrollbar. */
+    /** Breite des Raums bei Zoom 1; sinnvoll: sichtbare Breite des Containers. */
+    basisBreite: Dp = BASIS_BREITE,
     zoom: Float = 1f,
     namenZeigen: Boolean = true,
     rasterZeigen: Boolean = false,
-    markierung: (Sitzplatz) -> PlatzMarkierung = { PlatzMarkierung.KEINE },
-    onGeometrie: ((FlaechenGeometrie) -> Unit)? = null,
+    tischMarkierung: (Tisch) -> Boolean = { false },
+    slotMarkierung: (Sitzplatz) -> PlatzMarkierung = { PlatzMarkierung.KEINE },
     flaechenModifier: Modifier = Modifier,
-    platzModifier: (Sitzplatz) -> Modifier = { Modifier },
+    tischModifier: (Tisch) -> Modifier = { Modifier },
+    slotModifier: (Tisch, Sitzplatz) -> Modifier = { _, _ -> Modifier },
 ) {
     val tafelOben = blickrichtung == Blickrichtung.VON_HINTEN
     BoxWithConstraints(modifier) {
-        // Im Scrollcontainer ist die Breite unbegrenzt – dann auf die Basisbreite zurückfallen.
-        val basis: Dp = if (maxWidth.value.isFinite() && maxWidth < BASIS_BREITE) maxWidth else BASIS_BREITE
+        val basis: Dp = if (maxWidth.value.isFinite() && maxWidth < basisBreite) maxWidth else basisBreite
         val einheit: Dp = (basis / plan.spalten) * zoom
         val breite: Dp = einheit * plan.spalten
         val hoehe: Dp = einheit * plan.reihen
+        val dichte = LocalDensity.current
         Column(Modifier.width(breite), horizontalAlignment = Alignment.CenterHorizontally) {
-        if (tafelOben) Tafel(breite)
-        Box(Modifier.width(breite)) {
-            val dichte = LocalDensity.current
-            with(dichte) { onGeometrie?.invoke(FlaechenGeometrie(breite.toPx(), hoehe.toPx(), einheit.toPx())) }
+            if (tafelOben) Tafel(breite)
             Box(
                 Modifier
                     .width(breite)
@@ -96,33 +101,35 @@ fun SitzplanFlaeche(
                         for (j in 1 until plan.reihen) drawLine(linie, Offset(0f, j * e), Offset(size.width, j * e), 1f)
                     }
                 }
-                val platzGroesse = einheit * 0.92f
-                plaetze.forEach { platz ->
-                    val a = SitzplanLogik.anzeige(platz, blickrichtung)
-                    val links = with(dichte) { (breite * a.x - platzGroesse / 2).toPx().roundToInt() }
-                    val oben = with(dichte) { (hoehe * a.y - platzGroesse / 2).toPx().roundToInt() }
-                    Platz(
-                        schueler = platz.schuelerId?.let(schuelerProId::get),
-                        beschriftung = platz.beschriftung,
-                        drehung = a.drehung,
-                        groesse = platzGroesse,
-                        markierung = markierung(platz),
+                bestuhlung.tische.forEach { tisch ->
+                    val a = SitzplanLogik.anzeige(tisch, blickrichtung)
+                    val tischBreite = einheit * tisch.plaetze.coerceAtLeast(1) * 0.96f
+                    val tischHoehe = einheit * TISCH_TIEFE
+                    val links = with(dichte) { (breite * a.x - tischBreite / 2).toPx().roundToInt() }
+                    val oben = with(dichte) { (hoehe * a.y - tischHoehe / 2).toPx().roundToInt() }
+                    TischKachel(
+                        tisch = tisch,
+                        anzeigeDrehung = a.drehung,
+                        slots = bestuhlung.plaetzeVon(tisch.id),
+                        schuelerProId = schuelerProId,
+                        breite = tischBreite,
+                        hoehe = tischHoehe,
+                        einheit = einheit,
+                        markiert = tischMarkierung(tisch),
+                        slotMarkierung = slotMarkierung,
                         namenZeigen = namenZeigen,
                         fotoStore = fotoStore,
+                        slotModifier = slotModifier,
                         modifier = Modifier
                             .offset { IntOffset(links, oben) }
-                            .then(platzModifier(platz)),
+                            .then(tischModifier(tisch)),
                     )
                 }
             }
-        }
-        if (!tafelOben) Tafel(breite)
+            if (!tafelOben) Tafel(breite)
         }
     }
 }
-
-/** Basisbreite des Raums bei Zoom 1 – etwa eine Tabletbreite; Handys zoomen automatisch passend. */
-val BASIS_BREITE: Dp = 800.dp
 
 @Composable
 private fun Tafel(breite: Dp) {
@@ -139,74 +146,38 @@ private fun Tafel(breite: Dp) {
 }
 
 @Composable
-private fun Platz(
-    schueler: Schueler?,
-    beschriftung: String?,
-    drehung: Float,
-    groesse: Dp,
-    markierung: PlatzMarkierung,
+private fun TischKachel(
+    tisch: Tisch,
+    anzeigeDrehung: Float,
+    slots: List<Sitzplatz>,
+    schuelerProId: Map<Long, Schueler>,
+    breite: Dp,
+    hoehe: Dp,
+    einheit: Dp,
+    markiert: Boolean,
+    slotMarkierung: (Sitzplatz) -> PlatzMarkierung,
     namenZeigen: Boolean,
     fotoStore: FotoStore,
+    slotModifier: (Tisch, Sitzplatz) -> Modifier,
     modifier: Modifier,
 ) {
-    val rahmen = when (markierung) {
-        PlatzMarkierung.KEINE -> MaterialTheme.colorScheme.outlineVariant
-        PlatzMarkierung.AUSGEWAEHLT -> MaterialTheme.colorScheme.primary
-        PlatzMarkierung.RICHTIG -> Color(0xFF2E7D32)
-        PlatzMarkierung.FALSCH -> MaterialTheme.colorScheme.error
-    }
-    val dicke = if (markierung == PlatzMarkierung.KEINE) 1.dp else 3.dp
-    val form = RoundedCornerShape(groesse / 8)
-    val zeigeName = namenZeigen && groesse >= 56.dp
-    // Inhalt dreht mit dem Tisch, steht aber nie auf dem Kopf: Text bleibt im Bereich −90°…+90°.
-    val kopfueber = ((drehung % 360) + 360) % 360 in 90f..270f
-    val inhaltDrehung = if (kopfueber) 180f else 0f
-    val namenStil = when {
-        groesse >= 96.dp -> MaterialTheme.typography.labelLarge
-        groesse >= 72.dp -> MaterialTheme.typography.labelMedium
-        else -> MaterialTheme.typography.labelSmall
-    }
+    val form = RoundedCornerShape(einheit / 8)
+    // Inhalt dreht mit dem Tisch, steht aber nie auf dem Kopf.
+    val kopfueber = ((anzeigeDrehung % 360) + 360) % 360 in 90f..270f
+    val slotsAnzeige = if (kopfueber) slots.reversed() else slots
+    val rahmen = if (markiert) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
     Box(
         modifier
-            .size(groesse)
-            .graphicsLayer { rotationZ = drehung }
+            .size(breite, hoehe)
+            .graphicsLayer { rotationZ = anzeigeDrehung }
             .clip(form)
-            .background(
-                when {
-                    schueler != null -> MaterialTheme.colorScheme.surface
-                    beschriftung != null -> MaterialTheme.colorScheme.secondaryContainer
-                    else -> MaterialTheme.colorScheme.surfaceVariant
-                },
-            )
-            .border(dicke, rahmen, form),
-        contentAlignment = Alignment.Center,
+            .background(if (tisch.istMoebel) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface)
+            .border(if (markiert) 3.dp else 1.dp, rahmen, form),
     ) {
-        // Tischkante: die Seite, in die der Platz „blickt“ (bei 0° oben, Richtung Tafel)
-        if (beschriftung == null) Box(Modifier.fillMaxWidth(0.7f).height(3.dp).align(Alignment.TopCenter).offset(y = groesse * 0.06f).background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)))
-        Box(Modifier.fillMaxSize().graphicsLayer { rotationZ = inhaltDrehung }, contentAlignment = Alignment.Center) {
-            if (schueler != null) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    SchuelerFoto(
-                        datei = schueler.fotoDatei?.let(fotoStore::datei),
-                        beschreibung = schueler.vollerName,
-                        modifier = Modifier.size(if (zeigeName) groesse * 0.58f else groesse * 0.78f).clip(RoundedCornerShape(6.dp)),
-                    )
-                    if (zeigeName) {
-                        Box(Modifier.width(groesse - 6.dp).clipToBounds(), contentAlignment = Alignment.Center) {
-                            Text(
-                                schueler.anzeigeName,
-                                style = namenStil,
-                                maxLines = 1,
-                                softWrap = false,
-                                overflow = TextOverflow.Ellipsis,
-                                textAlign = TextAlign.Center,
-                            )
-                        }
-                    }
-                }
-            } else if (beschriftung != null) {
+        if (tisch.istMoebel) {
+            Box(Modifier.fillMaxSize().graphicsLayer { rotationZ = if (kopfueber) 180f else 0f }, contentAlignment = Alignment.Center) {
                 Text(
-                    beschriftung,
+                    tisch.beschriftung.orEmpty(),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSecondaryContainer,
                     textAlign = TextAlign.Center,
@@ -214,9 +185,70 @@ private fun Platz(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(4.dp),
                 )
-            } else {
-                Box(Modifier.size(groesse * 0.35f).clip(RoundedCornerShape(4.dp)).background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)))
             }
+        } else {
+            // Tischkante an der Seite, in die der Tisch „blickt“ (Richtung Tafel bei 0°)
+            Box(Modifier.fillMaxWidth(0.9f).height(3.dp).align(Alignment.TopCenter).offset(y = hoehe * 0.05f).background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)))
+            Row(Modifier.fillMaxSize().graphicsLayer { rotationZ = if (kopfueber) 180f else 0f }) {
+                slotsAnzeige.forEach { slot ->
+                    Slot(
+                        schueler = slot.schuelerId?.let(schuelerProId::get),
+                        markierung = slotMarkierung(slot),
+                        einheit = einheit,
+                        namenZeigen = namenZeigen,
+                        fotoStore = fotoStore,
+                        modifier = Modifier.weight(1f).fillMaxHeight().then(slotModifier(tisch, slot)),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun Slot(
+    schueler: Schueler?,
+    markierung: PlatzMarkierung,
+    einheit: Dp,
+    namenZeigen: Boolean,
+    fotoStore: FotoStore,
+    modifier: Modifier,
+) {
+    val rahmen = when (markierung) {
+        PlatzMarkierung.KEINE -> null
+        PlatzMarkierung.AUSGEWAEHLT -> MaterialTheme.colorScheme.primary
+        PlatzMarkierung.RICHTIG -> Color(0xFF2E7D32)
+        PlatzMarkierung.FALSCH -> MaterialTheme.colorScheme.error
+    }
+    val zeigeName = namenZeigen && einheit >= 56.dp
+    val namenStil = when {
+        einheit >= 96.dp -> MaterialTheme.typography.labelLarge
+        einheit >= 72.dp -> MaterialTheme.typography.labelMedium
+        else -> MaterialTheme.typography.labelSmall
+    }
+    val form = RoundedCornerShape(einheit / 10)
+    Box(
+        modifier
+            .padding(3.dp)
+            .clip(form)
+            .then(if (rahmen != null) Modifier.border(3.dp, rahmen, form) else Modifier),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (schueler != null) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                SchuelerFoto(
+                    datei = schueler.fotoDatei?.let(fotoStore::datei),
+                    beschreibung = schueler.vollerName,
+                    modifier = Modifier.size(if (zeigeName) einheit * 0.55f else einheit * 0.75f).clip(RoundedCornerShape(6.dp)),
+                )
+                if (zeigeName) {
+                    Box(Modifier.width(einheit - 10.dp).clipToBounds(), contentAlignment = Alignment.Center) {
+                        Text(schueler.anzeigeName, style = namenStil, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
+                    }
+                }
+            }
+        } else {
+            Box(Modifier.size(einheit * 0.32f).clip(RoundedCornerShape(4.dp)).background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)))
         }
     }
 }

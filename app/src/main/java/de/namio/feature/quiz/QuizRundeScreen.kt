@@ -52,6 +52,7 @@ import de.namio.core.model.Blickrichtung
 import de.namio.core.model.QuizModus
 import de.namio.feature.sitzplan.PlatzMarkierung
 import de.namio.feature.sitzplan.SitzplanFlaeche
+import de.namio.feature.sitzplan.BASIS_BREITE
 import de.namio.ui.components.EinstellungenEntryPoint
 import dagger.hilt.android.EntryPointAccessors
 import androidx.compose.runtime.State
@@ -208,13 +209,14 @@ private fun SitzplanFrageInhalt(
            Box(Modifier.widthIn(min = viewport), contentAlignment = Alignment.TopCenter) {
             SitzplanFlaeche(
                 plan = plan,
-                plaetze = phase.plaetze,
+                bestuhlung = phase.bestuhlung,
                 schuelerProId = schuelerProId,
                 blickrichtung = blickrichtung,
                 fotoStore = fotoStore,
                 zoom = zoom,
+                basisBreite = viewport.coerceAtMost(BASIS_BREITE),
                 namenZeigen = false,
-                markierung = { platz ->
+                slotMarkierung = { platz ->
                     val fb = phase.feedback
                     when {
                         fb == null -> PlatzMarkierung.KEINE
@@ -223,7 +225,7 @@ private fun SitzplanFrageInhalt(
                         else -> PlatzMarkierung.KEINE
                     }
                 },
-                platzModifier = { platz ->
+                slotModifier = { _, platz ->
                     val s = platz.schuelerId?.let(schuelerProId::get)
                     if (s != null && phase.feedback == null) Modifier.clickable { onAntwort(s) } else Modifier
                 },

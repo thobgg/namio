@@ -148,12 +148,43 @@ data class SitzplanEntity(
 )
 
 @Entity(
+    tableName = "tisch",
+    foreignKeys = [
+        ForeignKey(
+            entity = SitzplanEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["sitzplanId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [Index("sitzplanId")],
+)
+data class TischEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val sitzplanId: Long,
+    /** Mittelpunkt, normiert 0–1 auf Raumbreite/-tiefe. */
+    val x: Float,
+    val y: Float,
+    /** Drehung in Grad, im Uhrzeigersinn. */
+    val drehung: Float = 0f,
+    /** Anzahl Sitzplätze nebeneinander; 0 = Möbel (Pult, PC …). */
+    val plaetze: Int = 1,
+    val beschriftung: String? = null,
+)
+
+@Entity(
     tableName = "sitzplatz",
     foreignKeys = [
         ForeignKey(
             entity = SitzplanEntity::class,
             parentColumns = ["id"],
             childColumns = ["sitzplanId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+        ForeignKey(
+            entity = TischEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["tischId"],
             onDelete = ForeignKey.CASCADE,
         ),
         ForeignKey(
@@ -165,6 +196,7 @@ data class SitzplanEntity(
     ],
     indices = [
         Index(value = ["sitzplanId", "schuelerId"], unique = true),
+        Index(value = ["tischId", "slot"], unique = true),
         Index("sitzplanId"),
         Index("schuelerId"),
     ],
@@ -172,16 +204,11 @@ data class SitzplanEntity(
 data class SitzplatzEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val sitzplanId: Long,
+    val tischId: Long,
+    /** Position auf dem Tisch, 0 = links (in Tischrichtung). */
+    val slot: Int,
     /** null = leerer Stuhl. */
     val schuelerId: Long? = null,
-    /** Mittelpunkt, normiert 0–1 auf die Raumbreite. */
-    val x: Float,
-    /** Mittelpunkt, normiert 0–1 auf die Raumtiefe. */
-    val y: Float,
-    /** Drehung in Grad, im Uhrzeigersinn. */
-    val drehung: Float = 0f,
-    /** Gesetzt bei Möbeln ohne Schüler (Pult, PC, Schrank …). */
-    val beschriftung: String? = null,
 )
 
 /** Klasse mit Kennzahlen für die Liste (Abfrageergebnis, keine Tabelle). */

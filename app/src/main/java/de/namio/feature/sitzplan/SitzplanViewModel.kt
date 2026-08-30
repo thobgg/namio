@@ -5,12 +5,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
 import dagger.hilt.android.lifecycle.HiltViewModel
+import de.namio.core.model.Bestuhlung
 import de.namio.core.model.Blickrichtung
 import de.namio.core.model.Klasse
 import de.namio.core.model.Schueler
 import de.namio.core.model.Sitzplan
 import de.namio.core.model.SitzplanVorlage
-import de.namio.core.model.Sitzplatz
 import de.namio.core.repository.EinstellungenRepository
 import de.namio.core.repository.KlassenRepository
 import de.namio.core.repository.SchuelerRepository
@@ -31,7 +31,7 @@ data class SitzplanUiState(
     val klasse: Klasse? = null,
     val plaene: List<Sitzplan> = emptyList(),
     val aktiv: Sitzplan? = null,
-    val plaetze: List<Sitzplatz> = emptyList(),
+    val bestuhlung: Bestuhlung = Bestuhlung(),
     val schueler: List<Schueler> = emptyList(),
     val blickrichtung: Blickrichtung = Blickrichtung.VON_VORN,
     val laedt: Boolean = true,
@@ -39,7 +39,7 @@ data class SitzplanUiState(
     val schuelerProId: Map<Long, Schueler> get() = schueler.associateBy { it.id }
     val unplatziert: List<Schueler>
         get() {
-            val sitzend = plaetze.mapNotNull { it.schuelerId }.toSet()
+            val sitzend = bestuhlung.plaetze.mapNotNull { it.schuelerId }.toSet()
             return schueler.filter { it.id !in sitzend }
         }
 }
@@ -60,18 +60,18 @@ class SitzplanViewModel @Inject constructor(
     private val aktiverPlan = combine(sitzplanRepository.observePlaene(klasseId), gewaehltePlanId) { plaene, id ->
         plaene.firstOrNull { it.id == id } ?: plaene.firstOrNull()
     }
-    private val plaetze = aktiverPlan.flatMapLatest { plan ->
-        if (plan == null) flowOf(emptyList()) else sitzplanRepository.observePlaetze(plan.id)
+    private val bestuhlung = aktiverPlan.flatMapLatest { plan ->
+        if (plan == null) flowOf(Bestuhlung()) else sitzplanRepository.observeBestuhlung(plan.id)
     }
 
     val uiState: StateFlow<SitzplanUiState> = combine(
         klassenRepository.observe(klasseId),
         sitzplanRepository.observePlaene(klasseId),
         aktiverPlan,
-        plaetze,
+        bestuhlung,
         combine(schuelerRepository.observeFuerKlasse(klasseId), einstellungen.blickrichtung) { s, b -> s to b },
-    ) { klasse, plaene, aktiv, plaetze, (schueler, blick) ->
-        SitzplanUiState(klasse, plaene, aktiv, plaetze, schueler, blick, laedt = false)
+    ) { klasse, plaene, aktiv, best, (schueler, blick) ->
+        SitzplanUiState(klasse, plaene, aktiv, best, schueler, blick, laedt = false)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SitzplanUiState())
 
     private inline fun mitPlan(block: (Long) -> Unit) { uiState.value.aktiv?.let { block(it.id) } }
@@ -85,20 +85,17 @@ class SitzplanViewModel @Inject constructor(
         }
     }
 
-    fun planAendern(name: String, spalten: Int, reihen: Int, einrasten: Boolean) = mitPlan { id ->
-        viewModelScope.launch { sitzplanRepository.aendern(id, name, spalten, reihen, einrasten) }
-    }
-
+    fun planAendern(name: String, spalten: Int, reihen: Int, einrasten: Boolean) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.aendern(id, name, spalten, reihen, einrasten) } }
     fun planLoeschen() = mitPlan { id -> viewModelScope.launch { sitzplanRepository.loeschen(id); gewaehltePlanId.value = null } }
     fun alsStandard() = mitPlan { id -> viewModelScope.launch { sitzplanRepository.alsStandard(id) } }
     fun ablegen(schuelerId: Long, x: Float, y: Float) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.ablegen(id, schuelerId, x, y) } }
-    fun verschieben(platzId: Long, x: Float, y: Float) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.verschieben(id, platzId, x, y) } }
-    fun drehen(platzId: Long, grad: Float) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.drehen(id, platzId, grad) } }
+    fun tischHinzufuegen(x: Float, y: Float, plaetze: Int) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.tischHinzufuegen(id, x, y, plaetze, null) } }
+    fun verschieben(tischId: Long, x: Float, y: Float) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.verschieben(id, tischId, x, y) } }
+    fun drehen(tischId: Long, grad: Float) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.drehen(id, tischId, grad) } }
+    fun plaetzeAendern(tischId: Long, plaetze: Int) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.plaetzeAendern(id, tischId, plaetze) } }
+    fun beschriften(tischId: Long, text: String) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.beschriften(id, tischId, text) } }
     fun entfernen(schuelerId: Long) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.entfernen(id, schuelerId) } }
-    fun platzLoeschen(platzId: Long) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.platzLoeschen(id, platzId) } }
-    fun leererStuhl(x: Float, y: Float) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.leererStuhl(id, x, y) } }
-    fun partnerplatz(platzId: Long) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.partnerplatz(id, platzId) } }
-    fun beschriften(platzId: Long, text: String) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.beschriften(id, platzId, text) } }
+    fun tischLoeschen(tischId: Long) = mitPlan { id -> viewModelScope.launch { sitzplanRepository.tischLoeschen(id, tischId) } }
     fun mischen() = mitPlan { id -> viewModelScope.launch { sitzplanRepository.mischen(id) } }
 
     fun blickrichtungUmschalten() {

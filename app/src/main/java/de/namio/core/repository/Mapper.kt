@@ -7,6 +7,8 @@ import de.namio.core.data.entity.SitzplanEntity
 import de.namio.core.data.entity.SitzplatzEntity
 import de.namio.core.model.Sitzplan
 import de.namio.core.model.Sitzplatz
+import de.namio.core.data.entity.TischEntity
+import de.namio.core.model.Tisch
 import de.namio.core.model.Klasse
 import de.namio.core.model.Lernkarte
 import de.namio.core.model.Schueler
@@ -66,5 +68,7 @@ internal fun Lernkarte.zuEntity() = LernkarteEntity(
 )
 
 internal fun SitzplanEntity.zuModell() = Sitzplan(id, klasseId, name, spalten, reihen, istStandard, einrasten)
-internal fun SitzplatzEntity.zuModell() = Sitzplatz(id, sitzplanId, schuelerId, x, y, drehung, beschriftung)
-internal fun Sitzplatz.zuEntity() = SitzplatzEntity(id, sitzplanId, schuelerId, x, y, drehung, beschriftung)
+internal fun SitzplatzEntity.zuModell() = Sitzplatz(id, sitzplanId, tischId, slot, schuelerId)
+internal fun TischEntity.zuModell() = Tisch(id, sitzplanId, x, y, drehung, plaetze, beschriftung)
+internal fun Tisch.zuEntity() = TischEntity(id.coerceAtLeast(0), sitzplanId, x, y, drehung, plaetze, beschriftung)
+internal fun Sitzplatz.zuEntity(tischId: Long = this.tischId) = SitzplatzEntity(id, sitzplanId, tischId, slot, schuelerId)

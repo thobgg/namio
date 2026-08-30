@@ -1,178 +1,203 @@
 package de.namio.core.sitzplan
 
+import de.namio.core.model.Bestuhlung
 import de.namio.core.model.Blickrichtung
 import de.namio.core.model.Sitzplatz
 import de.namio.core.model.SitzplanVorlage
+import de.namio.core.model.Tisch
+import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.roundToInt
+import kotlin.math.sin
 import kotlin.random.Random
 
-/** Reine Logik für frei positionierbare Sitzpläne – ohne Android, damit testbar. */
+/** Reine Logik für Sitzpläne mit Tischen und Slots – ohne Android, damit testbar. */
 object SitzplanLogik {
 
-    /** Ein Platz ist eine Rastereinheit breit; ab dieser Entfernung (in Einheiten) gilt ein Drop als „auf dem Platz“. */
+    /** Ab dieser Entfernung (in Einheiten) vom Slot-Mittelpunkt gilt ein Drop als „auf dem Platz“. */
     const val TREFFER_RADIUS = 0.55f
+    const val MAX_PLAETZE = 4
 
-    /**
-     * Legt [schuelerId] an Raumposition ([x], [y]) ab. Liegt dort ein Platz, wird er belegt bzw.
-     * mit dem Sitzenden getauscht; sonst entsteht ein neuer Platz. Sitzt der Schüler schon, wandert er.
-     */
-    fun ablegen(plaetze: List<Sitzplatz>, sitzplanId: Long, schuelerId: Long, x: Float, y: Float, spalten: Int, reihen: Int, einrasten: Boolean): List<Sitzplatz> {
-        val alt = plaetze.firstOrNull { it.schuelerId == schuelerId }
-        val ziel = platzBei(plaetze, x, y, spalten, reihen)
-        return when {
-            ziel == null -> {
-                val (nx, ny) = if (einrasten) einrasten(x, y, spalten, reihen) else x.coerceIn(0f, 1f) to y.coerceIn(0f, 1f)
-                if (alt != null) {
-                    // Schüler samt Platz verschieben
-                    plaetze.map { if (it.id == alt.id) it.copy(x = nx, y = ny) else it }
-                } else {
-                    plaetze + Sitzplatz(0, sitzplanId, schuelerId, nx, ny)
-                }
-            }
-            ziel.id == alt?.id -> plaetze
-            else -> plaetze.map {
-                when (it.id) {
-                    ziel.id -> it.copy(schuelerId = schuelerId)
-                    alt?.id -> it.copy(schuelerId = ziel.schuelerId)
-                    else -> it
-                }
-            }
+    /** Raumkoordinate eines Slots (Mittelpunkt), Drehung berücksichtigt. */
+    fun slotPosition(tisch: Tisch, slot: Int, spalten: Int, reihen: Int): Pair<Float, Float> {
+        val versatz = slot - (tisch.plaetze - 1) / 2f
+        val rad = Math.toRadians(tisch.drehung.toDouble())
+        return (tisch.x + (versatz * cos(rad) / spalten).toFloat()) to (tisch.y + (versatz * sin(rad) / reihen).toFloat())
+    }
+
+    /** Nächster Sitzplatz-Slot innerhalb [TREFFER_RADIUS] Einheiten um ([x], [y]) oder `null`. */
+    fun slotBei(b: Bestuhlung, x: Float, y: Float, spalten: Int, reihen: Int): Sitzplatz? {
+        var best: Sitzplatz? = null
+        var bestAbstand = Float.MAX_VALUE
+        for (p in b.plaetze) {
+            val t = b.tisch(p.tischId) ?: continue
+            val (sx, sy) = slotPosition(t, p.slot, spalten, reihen)
+            val abstand = hypot((sx - x) * spalten, (sy - y) * reihen)
+            if (abstand < bestAbstand) { bestAbstand = abstand; best = p }
         }
+        return best?.takeIf { bestAbstand <= TREFFER_RADIUS }
     }
 
-    /** Verschiebt einen Platz (samt Sitzendem) an eine neue Position. */
-    fun verschieben(plaetze: List<Sitzplatz>, platzId: Long, x: Float, y: Float, spalten: Int, reihen: Int, einrasten: Boolean): List<Sitzplatz> {
-        val (nx, ny) = if (einrasten) einrasten(x, y, spalten, reihen) else x.coerceIn(0f, 1f) to y.coerceIn(0f, 1f)
-        return plaetze.map { if (it.id == platzId) it.copy(x = nx, y = ny) else it }
-    }
-
-    /** Dreht einen Platz um [grad] weiter (Ergebnis in 0 ≤ d < 360). */
-    fun drehen(plaetze: List<Sitzplatz>, platzId: Long, grad: Float): List<Sitzplatz> =
-        plaetze.map { if (it.id == platzId) it.copy(drehung = ((it.drehung + grad) % 360 + 360) % 360) else it }
-
-    /** Nimmt den Schüler vom Plan; der Stuhl bleibt leer stehen. */
-    fun entfernen(plaetze: List<Sitzplatz>, schuelerId: Long): List<Sitzplatz> =
-        plaetze.map { if (it.schuelerId == schuelerId) it.copy(schuelerId = null) else it }
-
-    /** Entfernt den Platz komplett. */
-    fun platzLoeschen(plaetze: List<Sitzplatz>, platzId: Long): List<Sitzplatz> = plaetze.filter { it.id != platzId }
-
-    /** Neuer leerer Stuhl an einer Position. */
-    fun leererStuhl(plaetze: List<Sitzplatz>, sitzplanId: Long, x: Float, y: Float, spalten: Int, reihen: Int, einrasten: Boolean): List<Sitzplatz> {
-        val (nx, ny) = if (einrasten) einrasten(x, y, spalten, reihen) else x.coerceIn(0f, 1f) to y.coerceIn(0f, 1f)
-        return plaetze + Sitzplatz(0, sitzplanId, null, nx, ny)
-    }
-
-    /** Legt rechts neben [platzId] einen Partnerplatz mit gleicher Drehung an (Doppeltisch). */
-    fun partnerplatz(plaetze: List<Sitzplatz>, platzId: Long, spalten: Int, reihen: Int): List<Sitzplatz> {
-        val p = plaetze.firstOrNull { it.id == platzId } ?: return plaetze
-        val rad = Math.toRadians(p.drehung.toDouble())
-        val dx = (Math.cos(rad) / spalten).toFloat()
-        val dy = (Math.sin(rad) / reihen).toFloat()
-        val nx = (p.x + dx).coerceIn(0f, 1f)
-        val ny = (p.y + dy).coerceIn(0f, 1f)
-        if (platzBei(plaetze, nx, ny, spalten, reihen) != null) return plaetze
-        return plaetze + Sitzplatz(0, p.sitzplanId, null, nx, ny, p.drehung)
-    }
-
-    /** Verteilt die sitzenden Schüler zufällig auf ihre bisherigen Plätze (leere Stühle bleiben leer). */
-    fun mischen(plaetze: List<Sitzplatz>, random: Random = Random.Default): List<Sitzplatz> {
-        val belegt = plaetze.filter { it.schuelerId != null }
-        val ids = belegt.mapNotNull { it.schuelerId }.shuffled(random)
-        val neu = belegt.map { it.id }.zip(ids).toMap()
-        return plaetze.map { p -> if (p.id in neu) p.copy(schuelerId = neu.getValue(p.id)) else p }
-    }
-
-    /** Nächster Sitzplatz (kein Möbel) innerhalb [TREFFER_RADIUS] Einheiten um ([x], [y]) oder `null`. */
-    fun platzBei(plaetze: List<Sitzplatz>, x: Float, y: Float, spalten: Int, reihen: Int): Sitzplatz? =
-        plaetze.filter { !it.istMoebel }.minByOrNull { abstandInEinheiten(it, x, y, spalten, reihen) }
-            ?.takeIf { abstandInEinheiten(it, x, y, spalten, reihen) <= TREFFER_RADIUS }
-
-    /** Macht aus einem leeren Stuhl ein Möbel mit Text – oder ändert den Text; leerer Text macht wieder einen Stuhl daraus. */
-    fun beschriften(plaetze: List<Sitzplatz>, platzId: Long, text: String): List<Sitzplatz> =
-        plaetze.map {
-            if (it.id == platzId && it.schuelerId == null) it.copy(beschriftung = text.trim().ifBlank { null }) else it
-        }
-
-    private fun abstandInEinheiten(p: Sitzplatz, x: Float, y: Float, spalten: Int, reihen: Int): Float =
-        hypot((p.x - x) * spalten, (p.y - y) * reihen)
-
-    /** Rastet auf das halbe Raster ein und hält den Platz im Raum. */
+    /** Rastet auf das halbe Raster ein und hält den Punkt im Raum. */
     fun einrasten(x: Float, y: Float, spalten: Int, reihen: Int): Pair<Float, Float> {
         val sx = (x * spalten * 2).roundToInt() / (spalten * 2f)
         val sy = (y * reihen * 2).roundToInt() / (reihen * 2f)
-        val rand = 0.5f
-        return sx.coerceIn(rand / spalten, 1f - rand / spalten) to sy.coerceIn(rand / reihen, 1f - rand / reihen)
+        return sx.coerceIn(0.5f / spalten, 1f - 0.5f / spalten) to sy.coerceIn(0.5f / reihen, 1f - 0.5f / reihen)
     }
 
-    /** Anzeigeposition: von vorn ist der Raum um 180° gedreht (Tafel beim Betrachter). */
-    fun anzeige(p: Sitzplatz, blickrichtung: Blickrichtung): Sitzplatz = when (blickrichtung) {
-        Blickrichtung.VON_HINTEN -> p
-        Blickrichtung.VON_VORN -> p.copy(x = 1f - p.x, y = 1f - p.y, drehung = (p.drehung + 180f) % 360)
+    private fun position(x: Float, y: Float, spalten: Int, reihen: Int, einrasten: Boolean) =
+        if (einrasten) einrasten(x, y, spalten, reihen) else x.coerceIn(0f, 1f) to y.coerceIn(0f, 1f)
+
+    private fun neueId(b: Bestuhlung): Long = (b.tische.minOfOrNull { it.id }?.coerceAtMost(0L) ?: 0L) - 1
+
+    /** Neuer Tisch mit [plaetze] leeren Slots (0 = Möbel mit [beschriftung]). */
+    fun tischHinzufuegen(b: Bestuhlung, sitzplanId: Long, x: Float, y: Float, drehung: Float, plaetze: Int, beschriftung: String?, spalten: Int, reihen: Int, einrasten: Boolean): Bestuhlung {
+        val (nx, ny) = position(x, y, spalten, reihen, einrasten)
+        val id = neueId(b)
+        val tisch = Tisch(id, sitzplanId, nx, ny, drehung, plaetze.coerceIn(0, MAX_PLAETZE), beschriftung?.takeIf { plaetze == 0 })
+        val slots = (0 until tisch.plaetze).map { Sitzplatz(0, sitzplanId, id, it, null) }
+        return Bestuhlung(b.tische + tisch, b.plaetze + slots)
     }
 
-    /** Umkehrung von [anzeige] für Fingerpositionen. */
+    /**
+     * Legt [schuelerId] an ([x], [y]) ab: auf einem Slot → belegen bzw. mit dem Sitzenden tauschen;
+     * im Freien → neuer Einzeltisch. Sitzt der Schüler schon, wird sein alter Slot frei.
+     */
+    fun ablegen(b: Bestuhlung, sitzplanId: Long, schuelerId: Long, x: Float, y: Float, spalten: Int, reihen: Int, einrasten: Boolean): Bestuhlung {
+        val alt = b.plaetze.firstOrNull { it.schuelerId == schuelerId }
+        val ziel = slotBei(b, x, y, spalten, reihen)
+        return when {
+            ziel == null -> {
+                val ohne = if (alt != null) b.copy(plaetze = b.plaetze.map { if (it.id == alt.id) it.copy(schuelerId = null) else it }) else b
+                val mitTisch = tischHinzufuegen(ohne, sitzplanId, x, y, 0f, 1, null, spalten, reihen, einrasten)
+                val neuerTisch = mitTisch.tische.last()
+                mitTisch.copy(plaetze = mitTisch.plaetze.map { if (it.tischId == neuerTisch.id) it.copy(schuelerId = schuelerId) else it })
+            }
+            alt != null && alt.id == ziel.id -> b
+            else -> b.copy(
+                plaetze = b.plaetze.map {
+                    when (it.id) {
+                        ziel.id -> it.copy(schuelerId = schuelerId)
+                        alt?.id -> it.copy(schuelerId = ziel.schuelerId)
+                        else -> it
+                    }
+                },
+            )
+        }
+    }
+
+    fun verschieben(b: Bestuhlung, tischId: Long, x: Float, y: Float, spalten: Int, reihen: Int, einrasten: Boolean): Bestuhlung {
+        val (nx, ny) = position(x, y, spalten, reihen, einrasten)
+        return b.copy(tische = b.tische.map { if (it.id == tischId) it.copy(x = nx, y = ny) else it })
+    }
+
+    fun drehen(b: Bestuhlung, tischId: Long, grad: Float): Bestuhlung =
+        b.copy(tische = b.tische.map { if (it.id == tischId) it.copy(drehung = ((it.drehung + grad) % 360 + 360) % 360) else it })
+
+    /** Ändert die Platzzahl (1–[MAX_PLAETZE]). Wegfallende Slots lassen ihre Schüler unplatziert. */
+    fun plaetzeAendern(b: Bestuhlung, tischId: Long, plaetze: Int): Bestuhlung {
+        val t = b.tisch(tischId) ?: return b
+        if (t.istMoebel) return b
+        val n = plaetze.coerceIn(1, MAX_PLAETZE)
+        val vorhanden = b.plaetzeVon(tischId)
+        val behalten = b.plaetze.filter { it.tischId != tischId || it.slot < n }
+        val neue = (vorhanden.size until n).map { Sitzplatz(0, t.sitzplanId, tischId, it, null) }
+        return Bestuhlung(b.tische.map { if (it.id == tischId) it.copy(plaetze = n) else it }, behalten + neue)
+    }
+
+    /** Macht aus einem Tisch ohne Sitzende ein Möbel mit Text; leerer Text macht einen Einzeltisch daraus. */
+    fun beschriften(b: Bestuhlung, tischId: Long, text: String): Bestuhlung {
+        val t = b.tisch(tischId) ?: return b
+        if (b.plaetzeVon(tischId).any { it.schuelerId != null }) return b
+        val neu = text.trim().ifBlank { null }
+        return if (neu == null) {
+            val ohne = b.copy(tische = b.tische.map { if (it.id == tischId) it.copy(plaetze = 1, beschriftung = null) else it }, plaetze = b.plaetze.filter { it.tischId != tischId })
+            ohne.copy(plaetze = ohne.plaetze + Sitzplatz(0, t.sitzplanId, tischId, 0, null))
+        } else {
+            Bestuhlung(b.tische.map { if (it.id == tischId) it.copy(plaetze = 0, beschriftung = neu) else it }, b.plaetze.filter { it.tischId != tischId })
+        }
+    }
+
+    fun entfernen(b: Bestuhlung, schuelerId: Long): Bestuhlung =
+        b.copy(plaetze = b.plaetze.map { if (it.schuelerId == schuelerId) it.copy(schuelerId = null) else it })
+
+    fun tischLoeschen(b: Bestuhlung, tischId: Long): Bestuhlung =
+        Bestuhlung(b.tische.filter { it.id != tischId }, b.plaetze.filter { it.tischId != tischId })
+
+    /** Verteilt die sitzenden Schüler zufällig auf die belegten Slots. */
+    fun mischen(b: Bestuhlung, random: Random = Random.Default): Bestuhlung {
+        val belegt = b.plaetze.filter { it.schuelerId != null }
+        val ids = belegt.mapNotNull { it.schuelerId }.shuffled(random)
+        val neu = belegt.map { it.id }.zip(ids).toMap()
+        return b.copy(plaetze = b.plaetze.map { p -> if (p.id in neu) p.copy(schuelerId = neu.getValue(p.id)) else p })
+    }
+
+    /** Anzeige: von vorn ist der Raum um 180° gedreht (Tafel beim Betrachter). */
+    fun anzeige(t: Tisch, blickrichtung: Blickrichtung): Tisch = when (blickrichtung) {
+        Blickrichtung.VON_HINTEN -> t
+        Blickrichtung.VON_VORN -> t.copy(x = 1f - t.x, y = 1f - t.y, drehung = (t.drehung + 180f) % 360)
+    }
+
     fun modellKoordinate(x: Float, y: Float, blickrichtung: Blickrichtung): Pair<Float, Float> = when (blickrichtung) {
         Blickrichtung.VON_HINTEN -> x to y
         Blickrichtung.VON_VORN -> (1f - x) to (1f - y)
     }
 
     /**
-     * Erzeugt die Plätze einer Vorlage für einen Raum von [spalten] × [reihen] Einheiten,
-     * belegt der Reihe nach mit [schuelerIds] (überzählige Plätze bleiben leer, überzählige
-     * Schüler bleiben unplatziert). Reihe 0 liegt an der Tafel (y klein).
+     * Bestuhlung einer Vorlage für einen Raum von [spalten] × [reihen] Einheiten, Slots der Reihe
+     * nach mit [schuelerIds] belegt. Reihe 0 liegt an der Tafel (y klein).
      */
-    fun vorlage(art: SitzplanVorlage, sitzplanId: Long, spalten: Int, reihen: Int, schuelerIds: List<Long>): List<Sitzplatz> {
-        val punkte: List<Triple<Float, Float, Float>> = when (art) {
+    fun vorlage(art: SitzplanVorlage, sitzplanId: Long, spalten: Int, reihen: Int, schuelerIds: List<Long>): Bestuhlung {
+        val tische: List<Triple<Pair<Float, Float>, Float, Int>> = when (art) {
             SitzplanVorlage.LEER -> emptyList()
             SitzplanVorlage.DOPPELTISCH_REIHEN -> doppeltischReihen(spalten, reihen)
             SitzplanVorlage.U_FORM -> uForm(spalten, reihen)
             SitzplanVorlage.GRUPPENTISCHE -> gruppentische(spalten, reihen)
         }
-        return punkte.mapIndexed { i, (x, y, d) -> Sitzplatz(0, sitzplanId, schuelerIds.getOrNull(i), x, y, d) }
+        var b = Bestuhlung()
+        tische.forEach { (pos, d, n) -> b = tischHinzufuegen(b, sitzplanId, pos.first, pos.second, d, n, null, spalten, reihen, einrasten = false) }
+        var i = 0
+        val plaetze = b.plaetze.map { p -> if (i < schuelerIds.size) p.copy(schuelerId = schuelerIds[i++]) else p }
+        return b.copy(plaetze = plaetze)
     }
 
-    private fun doppeltischReihen(spalten: Int, reihen: Int): List<Triple<Float, Float, Float>> {
-        // Doppeltische (2 Einheiten) mit 1 Einheit Gang dazwischen, Reihen mit 1 Einheit Abstand, 1,5 Einheiten Abstand zur Tafel
+    private fun doppeltischReihen(spalten: Int, reihen: Int): List<Triple<Pair<Float, Float>, Float, Int>> {
         val tische = ((spalten + 1) / 3).coerceAtLeast(1)
         val breite = tische * 3 - 1
         val links = (spalten - breite) / 2f
         val zeilen = ((reihen - 1) / 2).coerceAtLeast(1)
-        val out = mutableListOf<Triple<Float, Float, Float>>()
+        val out = mutableListOf<Triple<Pair<Float, Float>, Float, Int>>()
         for (z in 0 until zeilen) {
             val y = (1.5f + z * 2f + 0.5f) / reihen
-            for (t in 0 until tische) for (s in 0 until 2) {
-                val x = (links + t * 3 + s + 0.5f) / spalten
-                out += Triple(x, y, 0f)
-            }
+            for (t in 0 until tische) out += Triple(((links + t * 3 + 1f) / spalten) to y, 0f, 2)
         }
         return out
     }
 
-    private fun uForm(spalten: Int, reihen: Int): List<Triple<Float, Float, Float>> {
-        val out = mutableListOf<Triple<Float, Float, Float>>()
-        val obenY = (reihen - 0.5f) / reihen // hintere Reihe (weg von der Tafel)
-        for (s in 0 until spalten) out += Triple((s + 0.5f) / spalten, obenY, 0f)
-        for (r in reihen - 2 downTo 2) {
-            out += Triple(0.5f / spalten, (r + 0.5f) / reihen, 90f)
-            out += Triple((spalten - 0.5f) / spalten, (r + 0.5f) / reihen, 270f)
+    private fun uForm(spalten: Int, reihen: Int): List<Triple<Pair<Float, Float>, Float, Int>> {
+        val out = mutableListOf<Triple<Pair<Float, Float>, Float, Int>>()
+        val hinten = (reihen - 0.5f) / reihen
+        var x = 0
+        while (x + 2 <= spalten) { out += Triple(((x + 1f) / spalten) to hinten, 0f, 2); x += 2 }
+        var r = reihen - 2
+        while (r - 1 >= 2) {
+            out += Triple((0.5f / spalten) to ((r) / reihen.toFloat()), 90f, 2)
+            out += Triple(((spalten - 0.5f) / spalten) to ((r) / reihen.toFloat()), 270f, 2)
+            r -= 2
         }
         return out
     }
 
-    private fun gruppentische(spalten: Int, reihen: Int): List<Triple<Float, Float, Float>> {
-        // 4er-Gruppen (2×2) im Abstand von 3 Einheiten
-        val out = mutableListOf<Triple<Float, Float, Float>>()
+    private fun gruppentische(spalten: Int, reihen: Int): List<Triple<Pair<Float, Float>, Float, Int>> {
+        val out = mutableListOf<Triple<Pair<Float, Float>, Float, Int>>()
         val gx = ((spalten + 1) / 3).coerceAtLeast(1)
         val gy = ((reihen - 1) / 3).coerceAtLeast(1)
         val links = (spalten - (gx * 3 - 1)) / 2f
         for (j in 0 until gy) for (i in 0 until gx) {
-            val x0 = links + i * 3
+            val cx = (links + i * 3 + 1f) / spalten
             val y0 = 1.5f + j * 3
-            for (dy in 0 until 2) for (dx in 0 until 2) {
-                out += Triple((x0 + dx + 0.5f) / spalten, (y0 + dy + 0.5f) / reihen, if (dy == 0) 180f else 0f)
-            }
+            out += Triple(cx to ((y0 + 0.5f) / reihen), 180f, 2)
+            out += Triple(cx to ((y0 + 1.5f) / reihen), 0f, 2)
         }
         return out
     }
