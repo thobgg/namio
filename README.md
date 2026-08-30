@@ -30,6 +30,11 @@ der Autor übernimmt keine Verantwortung für die rechtmäßige Nutzung und kein
 die aus der Nutzung entstehen. Die App speichert alles ausschließlich lokal und verschlüsselt und
 sendet nichts – die Verantwortung für Gerät, Sperre, Backups und Löschung liegt bei dir.
 
+## Handbuch und Checkliste
+
+- [Handbuch (PDF)](docs/handbuch/namio-handbuch.pdf) · [LaTeX-Quelle](docs/handbuch/namio-handbuch.tex)
+- [Prüf-Checkliste](docs/checkliste.md)
+
 ## Datenschutz zuerst
 
 Die App verarbeitet Fotos von Minderjährigen. Deshalb gelten harte Regeln, keine Empfehlungen:
