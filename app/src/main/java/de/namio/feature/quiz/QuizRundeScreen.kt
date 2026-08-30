@@ -313,8 +313,8 @@ private fun SitzplanFrageInhalt(
     val ziel = phase.frage.ziel
     val schuelerProId = phase.frage.optionen.associateBy { it.id }
     val blickrichtung by rememberBlickrichtung()
-    var zoom by rememberSaveable { mutableStateOf(1f) }
-    val zoomGeste = rememberTransformableState { faktor, _, _ -> zoom = (zoom * faktor).coerceIn(0.5f, 3f) }
+    var zoomFaktor by rememberSaveable { mutableStateOf(1f) }
+    val zoomGeste = rememberTransformableState { faktor, _, _ -> zoomFaktor = (zoomFaktor * faktor).coerceIn(0.5f, 3f) }
     Column(Modifier.fillMaxSize().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         LinearProgressIndicator(progress = { phase.fortschritt }, modifier = Modifier.fillMaxWidth())
         Text(
@@ -330,6 +330,8 @@ private fun SitzplanFrageInhalt(
         )
         BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
           val viewport = maxWidth
+          val basis = viewport.coerceAtMost(BASIS_BREITE)
+          val zoom = ((56.dp * plan.spalten) / basis).coerceAtLeast(1f) * zoomFaktor
           Box(Modifier.fillMaxSize().transformable(zoomGeste).verticalScroll(rememberScrollState()).horizontalScroll(rememberScrollState())) {
            Box(Modifier.widthIn(min = viewport), contentAlignment = Alignment.TopCenter) {
             SitzplanFlaeche(
@@ -339,7 +341,7 @@ private fun SitzplanFrageInhalt(
                 blickrichtung = blickrichtung,
                 fotoStore = fotoStore,
                 zoom = zoom,
-                basisBreite = viewport.coerceAtMost(BASIS_BREITE),
+                basisBreite = basis,
                 namenZeigen = false,
                 slotMarkierung = { platz ->
                     val fb = phase.feedback

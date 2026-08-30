@@ -86,6 +86,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -116,6 +117,8 @@ enum class TischArt(val plaetze: Int, val breite: Float, val label: Int) {
 
 private const val ZOOM_MIN = 0.5f
 private const val ZOOM_MAX = 3f
+/** Mindestbreite eines Platzes in dp – darunter wird lieber gescrollt. */
+private val MIN_PLATZ_DP = 64.dp
 
 @Composable
 fun SitzplanScreen(
@@ -217,9 +220,10 @@ private fun SitzplanInhalt(
     fun tischWaehlen(id: Long) { auswahl = if (id in auswahl) auswahl - id else auswahl + id }
     var ausgewaehlterSchueler by remember { mutableStateOf<Long?>(null) }
     var drag by remember { mutableStateOf<Drag?>(null) }
-    var zoom by rememberSaveable { mutableStateOf(1f) }
+    // Nutzer-Zoom relativ zum automatischen Start-Zoom (der stellt sicher, dass ein Platz mindestens MIN_PLATZ_DP hat)
+    var zoomFaktor by rememberSaveable { mutableStateOf(1f) }
     var tischArt by rememberSaveable { mutableStateOf(TischArt.DOPPEL) }
-    val zoomGeste = rememberTransformableState { faktor, _, _ -> zoom = (zoom * faktor).coerceIn(ZOOM_MIN, ZOOM_MAX) }
+    val zoomGeste = rememberTransformableState { faktor, _, _ -> zoomFaktor = (zoomFaktor * faktor).coerceIn(ZOOM_MIN, ZOOM_MAX) }
     var flaeche by remember { mutableStateOf<Rect?>(null) }
     val blinken = rememberInfiniteTransition(label = "blinken")
     val blinkPhase by blinken.animateFloat(0f, 1f, infiniteRepeatable(tween(500), RepeatMode.Reverse), label = "blinkPhase")
@@ -255,8 +259,9 @@ private fun SitzplanInhalt(
 
     Scaffold(
         topBar = {
+            val kompakt = LocalConfiguration.current.screenWidthDp < 600
             TopAppBar(
-                title = { Text(stringResource(R.string.sitzplan_titel, state.klasse?.name ?: "")) },
+                title = { Text(if (kompakt) state.klasse?.name ?: "" else stringResource(R.string.sitzplan_titel, state.klasse?.name ?: ""), maxLines = 1) },
                 navigationIcon = {
                     IconButton(onClick = onZurueck) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.zurueck)) }
                 },
@@ -273,11 +278,17 @@ private fun SitzplanInhalt(
                                 tint = if (state.gesperrt) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.primary,
                             )
                         }
-                        IconButton(onClick = aktionen.blickrichtung) { Icon(Icons.Default.Cameraswitch, contentDescription = stringResource(R.string.sitzplan_blickrichtung)) }
-                        IconButton(onClick = { if (state.gesperrt) mischenFrage = true else aktionen.mischen() }) { Icon(Icons.Default.Shuffle, contentDescription = stringResource(R.string.sitzplan_mischen)) }
+                        if (!kompakt) {
+                            IconButton(onClick = aktionen.blickrichtung) { Icon(Icons.Default.Cameraswitch, contentDescription = stringResource(R.string.sitzplan_blickrichtung)) }
+                            IconButton(onClick = { if (state.gesperrt) mischenFrage = true else aktionen.mischen() }) { Icon(Icons.Default.Shuffle, contentDescription = stringResource(R.string.sitzplan_mischen)) }
+                        }
                         Box {
                             IconButton(onClick = { menueOffen = true }) { Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.mehr)) }
                             DropdownMenu(expanded = menueOffen, onDismissRequest = { menueOffen = false }) {
+                                if (kompakt) {
+                                    DropdownMenuItem(text = { Text(stringResource(R.string.sitzplan_blickrichtung)) }, onClick = { menueOffen = false; aktionen.blickrichtung() })
+                                    DropdownMenuItem(text = { Text(stringResource(R.string.sitzplan_mischen)) }, onClick = { menueOffen = false; if (state.gesperrt) mischenFrage = true else aktionen.mischen() })
+                                }
                                 DropdownMenuItem(text = { Text(stringResource(R.string.sitzplan_neu)) }, onClick = { menueOffen = false; neuDialog = true })
                                 DropdownMenuItem(text = { Text(stringResource(R.string.sitzplan_bearbeiten)) }, onClick = { menueOffen = false; bearbeitenDialog = true })
                                 DropdownMenuItem(text = { Text(stringResource(R.string.sitzplan_kopieren)) }, onClick = { menueOffen = false; kopierenDialog = true })
@@ -340,11 +351,14 @@ private fun SitzplanInhalt(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.weight(1f),
                         )
-                        IconButton(onClick = { zoom = (zoom / 1.25f).coerceIn(ZOOM_MIN, ZOOM_MAX) }) { Icon(Icons.Default.ZoomOut, contentDescription = stringResource(R.string.sitzplan_verkleinern)) }
-                        IconButton(onClick = { zoom = (zoom * 1.25f).coerceIn(ZOOM_MIN, ZOOM_MAX) }) { Icon(Icons.Default.ZoomIn, contentDescription = stringResource(R.string.sitzplan_vergroessern)) }
+                        IconButton(onClick = { zoomFaktor = (zoomFaktor / 1.25f).coerceIn(ZOOM_MIN, ZOOM_MAX) }) { Icon(Icons.Default.ZoomOut, contentDescription = stringResource(R.string.sitzplan_verkleinern)) }
+                        IconButton(onClick = { zoomFaktor = (zoomFaktor * 1.25f).coerceIn(ZOOM_MIN, ZOOM_MAX) }) { Icon(Icons.Default.ZoomIn, contentDescription = stringResource(R.string.sitzplan_vergroessern)) }
                     }
                     BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
                         val viewport = maxWidth
+                        val basis = (viewport - 16.dp).coerceAtMost(BASIS_BREITE)
+                        val autoZoom = ((MIN_PLATZ_DP * plan.spalten) / basis).coerceAtLeast(1f)
+                        val zoom = (autoZoom * zoomFaktor).coerceIn(ZOOM_MIN, ZOOM_MAX * autoZoom)
                         Box(Modifier.fillMaxSize().transformable(zoomGeste).verticalScroll(rememberScrollState()).horizontalScroll(rememberScrollState())) {
                             Box(Modifier.widthIn(min = viewport), contentAlignment = Alignment.TopCenter) {
                                 SitzplanFlaeche(
@@ -354,7 +368,7 @@ private fun SitzplanInhalt(
                                     blickrichtung = state.blickrichtung,
                                     fotoStore = fotoStore,
                                     zoom = zoom,
-                                    basisBreite = (viewport - 16.dp).coerceAtMost(BASIS_BREITE),
+                                    basisBreite = basis,
                                     modifier = Modifier.padding(8.dp),
                                     rasterZeigen = plan.einrasten && !state.gesperrt,
                                     tischMarkierung = { it.id in auswahl },
