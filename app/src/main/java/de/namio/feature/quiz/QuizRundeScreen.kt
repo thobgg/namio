@@ -171,9 +171,9 @@ private fun FrageInhalt(
                     }
                     Column(
                         verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
-                        modifier = Modifier.weight(1f).widthIn(max = INHALT_MAX_BREITE).padding(start = 24.dp),
+                        modifier = Modifier.weight(1f).fillMaxHeight().widthIn(max = INHALT_MAX_BREITE).padding(start = 24.dp).verticalScroll(rememberScrollState()),
                     ) {
-                        Antworten(phase, ziel, onAntwort)
+                        Antworten(phase, ziel, onAntwort, hoehe = 48.dp)
                     }
                 }
             } else {
@@ -384,12 +384,13 @@ private fun ZielFoto(ziel: Schueler, fotoStore: FotoStore, modifier: Modifier) {
 }
 
 @Composable
-private fun Antworten(phase: QuizRundePhase.Frage, ziel: Schueler, onAntwort: (Schueler) -> Unit) {
+private fun Antworten(phase: QuizRundePhase.Frage, ziel: Schueler, onAntwort: (Schueler) -> Unit, hoehe: Dp = 56.dp) {
     phase.frage.optionen.forEach { option ->
         AntwortButton(
             text = option.vollerName,
             zustand = antwortZustand(option, ziel, phase.feedback),
             onClick = { onAntwort(option) },
+            hoehe = hoehe,
         )
     }
 }
@@ -406,7 +407,7 @@ private fun antwortZustand(option: Schueler, ziel: Schueler, feedback: Feedback?
 }
 
 @Composable
-private fun AntwortButton(text: String, zustand: AntwortZustand, onClick: () -> Unit) {
+private fun AntwortButton(text: String, zustand: AntwortZustand, onClick: () -> Unit, hoehe: Dp = 56.dp) {
     val farben = when (zustand) {
         AntwortZustand.NEUTRAL -> ButtonDefaults.filledTonalButtonColors()
         AntwortZustand.RICHTIG -> ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32), contentColor = Color.White)
@@ -419,7 +420,7 @@ private fun AntwortButton(text: String, zustand: AntwortZustand, onClick: () -> 
     Button(
         onClick = onClick,
         colors = farben,
-        modifier = Modifier.fillMaxWidth().height(56.dp),
+        modifier = Modifier.fillMaxWidth().height(hoehe),
     ) {
         Text(text, style = MaterialTheme.typography.titleMedium)
     }
