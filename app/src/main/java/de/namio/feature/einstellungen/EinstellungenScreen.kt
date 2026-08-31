@@ -1,5 +1,7 @@
 package de.namio.feature.einstellungen
 
+import android.content.Intent
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,6 +48,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -89,6 +92,8 @@ fun EinstellungenScreen(onZurueck: () -> Unit, viewModel: EinstellungenViewModel
 }
 
 enum class TransferArt { EXPORT, IMPORT }
+
+private const val KONTAKT_MAIL = "thomas@bgg-mail.de"
 
 @Composable
 private fun PasswortDialog(art: TransferArt, onAbbrechen: () -> Unit, onOk: (String) -> Unit) {
@@ -170,6 +175,21 @@ private fun EinstellungenInhalt(
                     Button(onClick = { loeschenFrage = true }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error), modifier = Modifier.fillMaxWidth()) {
                         Text(stringResource(R.string.einstellungen_alles_loeschen))
                     }
+                } }
+                Card { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(stringResource(R.string.einstellungen_ueber), style = MaterialTheme.typography.titleMedium)
+                    val context = LocalContext.current
+                    val version = remember { runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull().orEmpty() }
+                    Text(stringResource(R.string.ueber_version, version), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.ueber_text), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        "Thomas Bugge · $KONTAKT_MAIL",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.clickable {
+                            runCatching { context.startActivity(Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:$KONTAKT_MAIL"))) }
+                        },
+                    )
                 } }
             }
         }

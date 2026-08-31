@@ -232,6 +232,9 @@
     <string name="einstellungen_neue_karten_hinweis">Wie viele noch nie gelernte Schüler pro Quizrunde dazukommen.</string>
     <string name="einstellungen_daten">Daten</string>
     <string name="einstellungen_transfer_hinweis">Alle Klassen, Fotos, Lernstände und Sitzpläne als passwortgeschützte Datei sichern oder auf ein anderes Gerät übertragen. Der Import ersetzt alle vorhandenen Daten.</string>
+    <string name="einstellungen_ueber">Über Namio</string>
+    <string name="ueber_version">Version %1$s</string>
+    <string name="ueber_text">Privates Hobbyprojekt. Die App hat keinen Internetzugriff; alle Daten bleiben verschlüsselt auf dem Gerät. Fragen und Rückmeldungen gern per Mail.</string>
     <string name="export_titel">Exportieren</string>
     <string name="import_titel">Importieren</string>
     <string name="export_hinweis">Die Datei wird mit AES-256 verschlüsselt. Ohne dieses Passwort lässt sie sich nicht wieder öffnen – es wird nirgends gespeichert.</string>

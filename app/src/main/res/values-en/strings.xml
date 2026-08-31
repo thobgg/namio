@@ -232,6 +232,9 @@
     <string name="einstellungen_neue_karten_hinweis">How many never-practised students join each quiz round.</string>
     <string name="einstellungen_daten">Data</string>
     <string name="einstellungen_transfer_hinweis">Back up all classes, photos, progress and seating plans as a password-protected file or move them to another device. Import replaces all existing data.</string>
+    <string name="einstellungen_ueber">About Namio</string>
+    <string name="ueber_version">Version %1$s</string>
+    <string name="ueber_text">Private hobby project. The app has no internet access; all data stays encrypted on the device. Questions and feedback welcome by mail.</string>
     <string name="export_titel">Export</string>
     <string name="import_titel">Import</string>
     <string name="export_hinweis">The file is encrypted with AES-256. Without this password it cannot be opened again – it is not stored anywhere.</string>
