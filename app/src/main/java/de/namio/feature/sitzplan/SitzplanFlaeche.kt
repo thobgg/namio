@@ -221,7 +221,8 @@ private fun Slot(
 ) {
     val rahmen = when (markierung) {
         PlatzMarkierung.KEINE -> null
-        PlatzMarkierung.AUSGEWAEHLT -> MaterialTheme.colorScheme.primary
+        // Tertiär statt Primär: gewähltes KIND muss sich vom blau markierten TISCH unterscheiden
+        PlatzMarkierung.AUSGEWAEHLT -> MaterialTheme.colorScheme.tertiary
         PlatzMarkierung.RICHTIG -> Color(0xFF2E7D32)
         PlatzMarkierung.FALSCH -> MaterialTheme.colorScheme.error
     }

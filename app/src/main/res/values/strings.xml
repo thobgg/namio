@@ -124,9 +124,11 @@
     <string name="sitzplan_tafel">Tafel</string>
     <string name="sitzplan_blickrichtung">Blickrichtung wechseln</string>
     <string name="sitzplan_mischen">Sitzordnung mischen</string>
-    <string name="sitzplan_hinweis">Kind antippen und zweites antippen: tauschen. Tisch antippen (bei belegtem Platz lange drücken): markieren, mehrere möglich. Ziehen verschiebt. Freie Fläche: neuer Tisch.</string>
+    <string name="sitzplan_hinweis">Kind antippen, zweites antippen, dann Tauschen bestätigen. Tisch antippen (bei belegtem Platz lange drücken): markieren, mehrere möglich. Ziehen verschiebt. Freie Fläche: neuer Tisch.</string>
+    <string name="sitzplan_tauschen">Tauschen</string>
+    <string name="sitzplan_tausch_paar">%1$s ↔ %2$s</string>
     <string name="sitzplan_hinweis_gewaehlt">Tisch ausgewählt: drehen, Plätze ändern, beschriften oder löschen.</string>
-    <string name="sitzplan_hinweis_platz">Jetzt den Platz oder eine freie Stelle antippen.</string>
+    <string name="sitzplan_hinweis_platz">Jetzt einen freien Platz antippen – oder ein zweites Kind zum Tauschen.</string>
     <string name="sitzplan_drehen_links">15° nach links drehen</string>
     <string name="sitzplan_drehen_rechts">15° nach rechts drehen</string>
     <string name="sitzplan_platz_weniger">Ein Platz weniger</string>

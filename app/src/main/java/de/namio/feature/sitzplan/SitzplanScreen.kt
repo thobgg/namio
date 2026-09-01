@@ -2,6 +2,8 @@ package de.namio.feature.sitzplan
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -10,6 +12,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Casino
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.runtime.LaunchedEffect
@@ -79,14 +82,18 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalConfiguration
@@ -254,26 +261,33 @@ private fun SitzplanInhalt(
     var twistRest by remember { mutableStateOf(0f) }
     fun tischWaehlen(id: Long) { auswahl = if (id in auswahl) auswahl - id else auswahl + id }
     var ausgewaehlterSchueler by remember { mutableStateOf<Long?>(null) }
+    // Zweites angetipptes Kind: Tausch erst nach Bestätigung (Tapucate-Muster), nicht sofort
+    var tauschPartner by remember { mutableStateOf<Long?>(null) }
     var drag by remember { mutableStateOf<Drag?>(null) }
     // Nutzer-Zoom relativ zum automatischen Start-Zoom (der stellt sicher, dass ein Platz mindestens MIN_PLATZ_DP hat)
     var zoomFaktor by rememberSaveable { mutableStateOf(1f) }
     var tischArt by rememberSaveable { mutableStateOf(TischArt.DOPPEL) }
     val zoomGeste = rememberTransformableState { faktor, _, _ -> zoomFaktor = (zoomFaktor * faktor).coerceIn(ZOOM_MIN, ZOOM_MAX) }
-    var flaeche by remember { mutableStateOf<Rect?>(null) }
+    // LayoutCoordinates statt Rect: die Lage wird erst im Moment der Geste gelesen. Wichtig ist
+    // positionInRoot()+size statt boundsInRoot(): Letzteres clippt am Scroll-Viewport – auf dem
+    // Handy (Plan breiter als der Schirm) wäre die Breite sonst nur der sichtbare Ausschnitt.
+    var flaeche by remember { mutableStateOf<LayoutCoordinates?>(null) }
+    fun ungeclippt(k: LayoutCoordinates?): Rect? = k?.takeIf { it.isAttached }?.let { Rect(it.positionInRoot(), it.size.toSize()) }
+    fun flaechenRect(): Rect? = ungeclippt(flaeche)
     val blinken = rememberInfiniteTransition(label = "blinken")
     val blinkPhase by blinken.animateFloat(0f, 1f, infiniteRepeatable(tween(500), RepeatMode.Reverse), label = "blinkPhase")
     val blinkAn = state.ausgelost != null && blinkPhase > 0.5f
     LaunchedEffect(state.ausgelost) {
         if (state.ausgelost != null) { delay(10_000); aktionen.auslosungBeenden() }
     }
-    var leiste by remember { mutableStateOf<Rect?>(null) }
-    var wurzel by remember { mutableStateOf(Offset.Zero) }
+    var leiste by remember { mutableStateOf<LayoutCoordinates?>(null) }
+    var wurzel by remember { mutableStateOf<LayoutCoordinates?>(null) }
     val plan = state.aktiv
     val best = state.bestuhlung
 
     /** Root-Punkt → normierte Raumkoordinate (Modell), oder null außerhalb der Fläche. */
     fun raumKoordinate(punkt: Offset): Pair<Float, Float>? {
-        val f = flaeche ?: return null
+        val f = flaechenRect() ?: return null
         if (!f.contains(punkt)) return null
         return SitzplanLogik.modellKoordinate((punkt.x - f.left) / f.width, (punkt.y - f.top) / f.height, state.blickrichtung)
     }
@@ -283,7 +297,7 @@ private fun SitzplanInhalt(
         when (d) {
             is Drag.Schueler -> when {
                 raum != null -> aktionen.ablegen(d.schueler.id, raum.first, raum.second)
-                leiste?.contains(d.position) == true -> aktionen.entfernen(d.schueler.id)
+                ungeclippt(leiste)?.contains(d.position) == true -> aktionen.entfernen(d.schueler.id)
             }
             is Drag.Tisch -> if (raum != null) {
                 if (auswahl.size > 1 && d.tisch.id in auswahl) aktionen.verschiebeMehrere(auswahl.toSet(), raum.first - d.tisch.x, raum.second - d.tisch.y)
@@ -307,7 +321,7 @@ private fun SitzplanInhalt(
                             IconButton(onClick = aktionen.rueckgaengig, enabled = state.kannRueckgaengig) { Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = stringResource(R.string.sitzplan_rueckgaengig)) }
                         }
                         val sperrZustand = stringResource(if (state.gesperrt) R.string.sitzplan_zustand_gesperrt else R.string.sitzplan_zustand_offen)
-                    IconButton(onClick = { aktionen.sperre(); auswahl = emptyList(); ausgewaehlterSchueler = null }, modifier = Modifier.semantics { stateDescription = sperrZustand }) {
+                    IconButton(onClick = { aktionen.sperre(); auswahl = emptyList(); ausgewaehlterSchueler = null; tauschPartner = null }, modifier = Modifier.semantics { stateDescription = sperrZustand }) {
                             Icon(
                                 if (state.gesperrt) Icons.Default.Lock else Icons.Default.LockOpen,
                                 contentDescription = stringResource(if (state.gesperrt) R.string.sitzplan_entsperren else R.string.sitzplan_sperren),
@@ -340,7 +354,7 @@ private fun SitzplanInhalt(
             )
         },
     ) { innen ->
-        Box(Modifier.fillMaxSize().padding(innen).onGloballyPositioned { wurzel = it.boundsInRoot().topLeft }) {
+        Box(Modifier.fillMaxSize().padding(innen).onGloballyPositioned { wurzel = it }) {
             if (!state.laedt && plan == null) {
                 Column(Modifier.align(Alignment.Center).padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(stringResource(R.string.sitzplan_keiner), textAlign = TextAlign.Center)
@@ -373,9 +387,12 @@ private fun SitzplanInhalt(
                             TextButton(onClick = aktionen.auslosen) { Text(stringResource(R.string.sitzplan_nochmal)) }
                         }
                     }
+                    val tauschErster = ausgewaehlterSchueler?.let(state.schuelerProId::get)
+                    val tauschZweiter = tauschPartner?.let(state.schuelerProId::get)
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp)) {
                         Text(
-                            stringResource(
+                            if (tauschErster != null && tauschZweiter != null) stringResource(R.string.sitzplan_tausch_paar, tauschErster.anzeigeName, tauschZweiter.anzeigeName)
+                            else stringResource(
                                 when {
                                     state.gesperrt -> R.string.sitzplan_hinweis_gesperrt
                                     ausgewaehlterSchueler != null -> R.string.sitzplan_hinweis_platz
@@ -388,8 +405,38 @@ private fun SitzplanInhalt(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.weight(1f),
                         )
+                        if (tauschErster != null && tauschZweiter != null && !state.gesperrt) {
+                            IconButton(onClick = {
+                                val platz = best.plaetze.firstOrNull { it.schuelerId == tauschZweiter.id }
+                                val ziel = platz?.let { p -> best.tisch(p.tischId)?.let { t -> SitzplanLogik.slotPosition(t, p.slot, plan.spalten, plan.reihen) } }
+                                if (ziel != null) aktionen.ablegen(tauschErster.id, ziel.first, ziel.second)
+                                ausgewaehlterSchueler = null; tauschPartner = null
+                            }) { Icon(Icons.Default.SwapHoriz, contentDescription = stringResource(R.string.sitzplan_tauschen), tint = MaterialTheme.colorScheme.primary) }
+                        }
                         IconButton(onClick = { zoomFaktor = (zoomFaktor / 1.25f).coerceIn(ZOOM_MIN, ZOOM_MAX) }) { Icon(Icons.Default.ZoomOut, contentDescription = stringResource(R.string.sitzplan_verkleinern)) }
                         IconButton(onClick = { zoomFaktor = (zoomFaktor * 1.25f).coerceIn(ZOOM_MIN, ZOOM_MAX) }) { Icon(Icons.Default.ZoomIn, contentDescription = stringResource(R.string.sitzplan_vergroessern)) }
+                    }
+                    // Werkzeuge oben, direkt unter dem Hinweis – unten übersieht man sie leicht
+                    if (auswahl.size > 1 && !state.gesperrt) {
+                        MehrfachWerkzeuge(
+                            anzahl = auswahl.size,
+                            onDrehen = { aktionen.drehenMehrere(auswahl.toSet(), it) },
+                            onAusrichten = { aktionen.ausrichten(auswahl, it) },
+                            onLoeschen = { auswahl.forEach(aktionen.tischLoeschen); auswahl = emptyList() },
+                            onAufheben = { auswahl = emptyList() },
+                        )
+                    } else if (gewaehlt != null && !state.gesperrt) {
+                        TischWerkzeuge(
+                            tisch = gewaehlt,
+                            sitzende = best.plaetzeVon(gewaehlt.id).count { it.schuelerId != null },
+                            onDrehen = { aktionen.drehen(gewaehlt.id, it) },
+                            onDuplizieren = { aktionen.duplizieren(gewaehlt.id) },
+                            onPlaetze = { aktionen.plaetzeAendern(gewaehlt.id, it) },
+                            onBreite = { aktionen.breiteAendern(gewaehlt.id, it) },
+                            onBeschriften = { beschriftenDialog = true },
+                            onAlleEntfernen = { best.plaetzeVon(gewaehlt.id).mapNotNull { it.schuelerId }.forEach(aktionen.entfernen) },
+                            onLoeschen = { aktionen.tischLoeschen(gewaehlt.id); auswahl = emptyList() },
+                        )
                     }
                     BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
                         val viewport = maxWidth
@@ -412,20 +459,20 @@ private fun SitzplanInhalt(
                                     slotMarkierung = { slot ->
                                         when {
                                             blinkAn && slot.schuelerId != null && slot.schuelerId == state.ausgelost -> PlatzMarkierung.RICHTIG
-                                            slot.schuelerId != null && slot.schuelerId == ausgewaehlterSchueler -> PlatzMarkierung.AUSGEWAEHLT
+                                            slot.schuelerId != null && (slot.schuelerId == ausgewaehlterSchueler || slot.schuelerId == tauschPartner) -> PlatzMarkierung.AUSGEWAEHLT
                                             else -> PlatzMarkierung.KEINE
                                         }
                                     },
                                     flaechenModifier = Modifier
-                                        .onGloballyPositioned { flaeche = it.boundsInRoot() }
+                                        .onGloballyPositioned { flaeche = it }
                                         .pointerInput(plan.id, ausgewaehlterSchueler, auswahl.isEmpty(), state.blickrichtung, state.gesperrt) {
                                             if (state.gesperrt) return@pointerInput
                                             detectTapGestures { lokal ->
-                                                val f = flaeche ?: return@detectTapGestures
-                                                val raum = raumKoordinate(f.topLeft + lokal) ?: return@detectTapGestures
+                                                val f = flaeche?.takeIf { it.isAttached } ?: return@detectTapGestures
+                                                val raum = raumKoordinate(f.localToRoot(lokal)) ?: return@detectTapGestures
                                                 val s = ausgewaehlterSchueler
                                                 when {
-                                                    s != null -> { aktionen.ablegen(s, raum.first, raum.second); ausgewaehlterSchueler = null }
+                                                    s != null -> { aktionen.ablegen(s, raum.first, raum.second); ausgewaehlterSchueler = null; tauschPartner = null }
                                                     auswahl.isNotEmpty() -> auswahl = emptyList()
                                                     else -> aktionen.tischHinzufuegen(raum.first, raum.second, tischArt.plaetze, tischArt.breite)
                                                 }
@@ -449,7 +496,6 @@ private fun SitzplanInhalt(
                                             }
                                             .dragQuelle(
                                                 key = "tisch" + tisch.id,
-                                                anker = { tischAnker(flaeche, plan.spalten, plan.reihen, tisch, state.blickrichtung) },
                                                 start = { Drag.Tisch(tisch, it) },
                                                 onDrag = { drag = it },
                                                 onDrop = { drag = null; ablegen(it) },
@@ -459,17 +505,19 @@ private fun SitzplanInhalt(
                                         val sitzender = slot.schuelerId?.let(state.schuelerProId::get)
                                         if (state.gesperrt) Modifier else Modifier
                                             .pointerInput(slot.id, ausgewaehlterSchueler, sitzender?.id) {
-                                                detectTapGestures(
-                                                    onLongPress = { tischWaehlen(tisch.id) },
+                                                tippenOderLangdruck(
+                                                    onLangdruck = { tischWaehlen(tisch.id) },
                                                 ) {
                                                     val s = ausgewaehlterSchueler
                                                     when {
+                                                        // Zweites Kind angetippt: nur vormerken, getauscht wird über den Tauschen-Knopf
+                                                        s != null && sitzender != null && sitzender.id != s -> tauschPartner = sitzender.id
                                                         s != null -> {
                                                             val (x, y) = SitzplanLogik.slotPosition(tisch, slot.slot, plan.spalten, plan.reihen)
-                                                            aktionen.ablegen(s, x, y)   // leer: setzen, belegt: tauschen
-                                                            ausgewaehlterSchueler = null
+                                                            aktionen.ablegen(s, x, y)   // freien Platz besetzen
+                                                            ausgewaehlterSchueler = null; tauschPartner = null
                                                         }
-                                                        sitzender != null -> { ausgewaehlterSchueler = sitzender.id; auswahl = emptyList() }
+                                                        sitzender != null -> { ausgewaehlterSchueler = sitzender.id; tauschPartner = null; auswahl = emptyList() }
                                                         else -> tischWaehlen(tisch.id)
                                                     }
                                                 }
@@ -477,11 +525,10 @@ private fun SitzplanInhalt(
                                             .then(
                                                 if (sitzender != null) {
                                                     Modifier.dragQuelle(
+                                                        // Besetzter Platz zieht immer das Kind; nur wenn ein Langdruck den Tisch zur
+                                                        // MEHRFACHauswahl ergänzt, flippt der Key, dieser pointerInput startet neu und
+                                                        // die laufende Geste fällt zum Tisch-Drag durch – dann wandert die Gruppe.
                                                         key = "slot" + slot.id + (auswahl.size > 1 && tisch.id in auswahl),
-                                                        anker = {
-                                                            if (auswahl.size > 1 && tisch.id in auswahl) tischAnker(flaeche, plan.spalten, plan.reihen, tisch, state.blickrichtung)
-                                                            else slotAnker(flaeche, plan.spalten, plan.reihen, tisch, slot.slot, state.blickrichtung)
-                                                        },
                                                         // Teil einer Mehrfachauswahl: die Gruppe ziehen, nicht das Kind
                                                         start = { if (auswahl.size > 1 && tisch.id in auswahl) Drag.Tisch(tisch, it) else Drag.Schueler(sitzender, it) },
                                                         onDrag = { drag = it },
@@ -508,52 +555,49 @@ private fun SitzplanInhalt(
                             }
                         }
                     }
-                    if (auswahl.size > 1 && !state.gesperrt) {
-                        MehrfachWerkzeuge(
-                            anzahl = auswahl.size,
-                            onDrehen = { aktionen.drehenMehrere(auswahl.toSet(), it) },
-                            onAusrichten = { aktionen.ausrichten(auswahl, it) },
-                            onLoeschen = { auswahl.forEach(aktionen.tischLoeschen); auswahl = emptyList() },
-                            onAufheben = { auswahl = emptyList() },
-                        )
-                    } else if (gewaehlt != null && !state.gesperrt) {
-                        TischWerkzeuge(
-                            tisch = gewaehlt,
-                            sitzende = best.plaetzeVon(gewaehlt.id).count { it.schuelerId != null },
-                            onDrehen = { aktionen.drehen(gewaehlt.id, it) },
-                            onDuplizieren = { aktionen.duplizieren(gewaehlt.id) },
-                            onPlaetze = { aktionen.plaetzeAendern(gewaehlt.id, it) },
-                            onBreite = { aktionen.breiteAendern(gewaehlt.id, it) },
-                            onBeschriften = { beschriftenDialog = true },
-                            onAlleEntfernen = { best.plaetzeVon(gewaehlt.id).mapNotNull { it.schuelerId }.forEach(aktionen.entfernen) },
-                            onLoeschen = { aktionen.tischLoeschen(gewaehlt.id); auswahl = emptyList() },
-                        )
-                    }
                     if (!state.gesperrt) UnplatziertLeiste(
                         schueler = state.unplatziert,
                         ausgewaehlt = ausgewaehlterSchueler,
                         fotoStore = fotoStore,
-                        onTipp = { ausgewaehlterSchueler = if (ausgewaehlterSchueler == it.id) null else it.id; auswahl = emptyList() },
+                        onTipp = { ausgewaehlterSchueler = if (ausgewaehlterSchueler == it.id) null else it.id; tauschPartner = null; auswahl = emptyList() },
                         onDrag = { drag = it },
                         onDrop = { drag = null; ablegen(it) },
-                        modifier = Modifier.onGloballyPositioned { leiste = it.boundsInRoot() },
+                        modifier = Modifier.onGloballyPositioned { leiste = it },
                     )
                 }
             }
             drag?.let { d ->
-                val halb = with(LocalDensity.current) { 36.dp.toPx() }
+                val dichte = LocalDensity.current
+                // Geist in Form des Gezogenen: Kind = Quadrat, Tisch = echte Tischmaße samt Drehung
+                val standard = with(dichte) { 72.dp.toPx() }
+                val (geistBreite, geistHoehe) = when (d) {
+                    is Drag.Schueler -> standard to standard
+                    is Drag.Tisch -> {
+                        val einheit = flaechenRect()?.takeIf { plan != null }?.width?.div(plan!!.spalten) ?: standard
+                        (einheit * d.tisch.breite * 0.96f) to (einheit * tischTiefe(!d.tisch.istMoebel))
+                    }
+                }
                 Box(
                     Modifier
                         .zIndex(10f)
-                        .offset { IntOffset((d.position.x - wurzel.x - halb).roundToInt(), (d.position.y - wurzel.y - halb).roundToInt()) }
-                        .size(72.dp)
+                        .offset {
+                            val w = wurzel?.takeIf { it.isAttached }?.positionInRoot() ?: Offset.Zero
+                            IntOffset((d.position.x - w.x - geistBreite / 2).roundToInt(), (d.position.y - w.y - geistHoehe / 2).roundToInt())
+                        }
+                        .size(with(dichte) { geistBreite.toDp() }, with(dichte) { geistHoehe.toDp() })
+                        .graphicsLayer { if (d is Drag.Tisch) rotationZ = SitzplanLogik.anzeige(d.tisch, state.blickrichtung).drehung }
                         .clip(RoundedCornerShape(10.dp))
-                        .background(MaterialTheme.colorScheme.primaryContainer),
+                        .background(if (d is Drag.Schueler) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.primaryContainer),
                     contentAlignment = Alignment.Center,
                 ) {
                     when (d) {
                         is Drag.Schueler -> SchuelerFoto(datei = d.schueler.fotoDatei?.let(fotoStore::datei), beschreibung = d.schueler.vollerName, modifier = Modifier.size(56.dp).clip(RoundedCornerShape(8.dp)))
-                        is Drag.Tisch -> Text(d.tisch.beschriftung ?: stringResource(R.string.sitzplan_tisch), style = MaterialTheme.typography.labelMedium)
+                        is Drag.Tisch -> Text(
+                            // Gruppen-Drag: Anzahl zeigen, damit klar ist, dass die ganze Markierung am Finger hängt
+                            if (auswahl.size > 1 && d.tisch.id in auswahl) stringResource(R.string.sitzplan_mehrere, auswahl.size)
+                            else d.tisch.beschriftung ?: stringResource(R.string.sitzplan_tisch),
+                            style = MaterialTheme.typography.labelMedium,
+                        )
                     }
                 }
             }
@@ -601,45 +645,65 @@ private fun SitzplanInhalt(
     }
 }
 
-/** Root-Position der linken oberen Ecke der (ungedrehten) Tischkachel – für Drag-Startpunkte. */
-private fun tischAnker(flaeche: Rect?, spalten: Int, reihen: Int, tisch: Tisch, blickrichtung: de.namio.core.model.Blickrichtung): Offset {
-    val f = flaeche ?: return Offset.Zero
-    val a = SitzplanLogik.anzeige(tisch, blickrichtung)
-    val einheit = f.width / spalten
-    val b = einheit * tisch.breite * 0.96f
-    val h = einheit * tischTiefe(!tisch.istMoebel)
-    return Offset(f.left + f.width * a.x - b / 2, f.top + f.height * a.y - h / 2)
+/**
+ * Tipp- und Langdruck-Erkennung, die die Geste nach dem Langdruck NICHT schluckt.
+ * `detectTapGestures` konsumiert nach `onLongPress` alle Bewegungen bis zum Loslassen –
+ * „lange drücken (markieren) und direkt ziehen“ käme damit nie bei der Drag-Erkennung an.
+ * Hier bleibt das Ziehen nach dem Langdruck möglich; nur ein Loslassen ohne Bewegung wird
+ * konsumiert, damit dahinterliegende Tipp-Erkenner nicht zusätzlich feuern.
+ */
+private suspend fun PointerInputScope.tippenOderLangdruck(
+    onLangdruck: () -> Unit,
+    onTipp: () -> Unit,
+): Unit = awaitEachGesture {
+    val start = awaitFirstDown(requireUnconsumed = false)
+    val slop = viewConfiguration.touchSlop
+    val vorbei = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+        while (true) {
+            val punkt = awaitPointerEvent().changes.firstOrNull { it.id == start.id } ?: return@withTimeoutOrNull true
+            if (punkt.isConsumed || (punkt.position - start.position).getDistance() > slop) return@withTimeoutOrNull true
+            if (!punkt.pressed) { punkt.consume(); onTipp(); return@withTimeoutOrNull true }
+        }
+        @Suppress("UNREACHABLE_CODE") true
+    }
+    if (vorbei == null) {
+        onLangdruck()
+        var bewegt = false
+        while (true) {
+            val punkt = awaitPointerEvent().changes.firstOrNull { it.id == start.id } ?: break
+            if ((punkt.position - start.position).getDistance() > slop) bewegt = true
+            if (!punkt.pressed) { if (!bewegt) punkt.consume(); break }
+        }
+    }
 }
 
-private fun slotAnker(flaeche: Rect?, spalten: Int, reihen: Int, tisch: Tisch, slot: Int, blickrichtung: de.namio.core.model.Blickrichtung): Offset {
-    val f = flaeche ?: return Offset.Zero
-    val (mx, my) = SitzplanLogik.slotPosition(tisch, slot, spalten, reihen)
-    val (ax, ay) = SitzplanLogik.modellKoordinate(mx, my, blickrichtung)
-    val einheit = f.width / spalten
-    return Offset(f.left + f.width * ax - einheit / 2, f.top + f.height * ay - einheit * tischTiefe(true) / 2)
-}
-
-/** Long-Press startet den Drag. [anker] liefert die Root-Position des Elements, damit Fingerpositionen absolut sind. */
+/**
+ * Ziehen startet nach dem Touch-Slop. Fingerpositionen werden über [LayoutCoordinates.localToRoot]
+ * in Root-Koordinaten übersetzt — nur so stimmt der Anfasspunkt auch bei gedrehten Tischen, deren
+ * `graphicsLayer`-Rotation die lokalen Pointer-Koordinaten mitdreht.
+ */
 private fun Modifier.dragQuelle(
     key: Any,
-    anker: () -> Offset,
     start: (Offset) -> Drag,
     onDrag: (Drag) -> Unit,
     onDrop: (Drag) -> Unit,
-): Modifier = pointerInput(key) {
-    var aktuell = Offset.Zero
-    var laufend: Drag? = null
-    fun mit(pos: Offset): Drag? = when (val l = laufend) {
-        is Drag.Schueler -> l.copy(position = pos)
-        is Drag.Tisch -> l.copy(position = pos)
-        null -> null
+): Modifier = composed {
+    val koordinaten = remember { mutableStateOf<LayoutCoordinates?>(null) }
+    onGloballyPositioned { koordinaten.value = it }.pointerInput(key) {
+        var laufend: Drag? = null
+        fun wurzelPunkt(lokal: Offset): Offset = koordinaten.value?.localToRoot(lokal) ?: lokal
+        fun mit(pos: Offset): Drag? = when (val l = laufend) {
+            is Drag.Schueler -> l.copy(position = pos)
+            is Drag.Tisch -> l.copy(position = pos)
+            null -> null
+        }
+        detectDragGestures(
+            onDragStart = { lokal -> laufend = start(wurzelPunkt(lokal)); laufend?.let(onDrag) },
+            onDrag = { change, _ -> change.consume(); laufend = mit(wurzelPunkt(change.position)); laufend?.let(onDrag) },
+            onDragEnd = { laufend?.let(onDrop) },
+            onDragCancel = { mit(Offset(-1f, -1f))?.let(onDrop) },
+        )
     }
-    detectDragGestures(
-        onDragStart = { lokal -> aktuell = anker() + lokal; laufend = start(aktuell); laufend?.let(onDrag) },
-        onDrag = { change, delta -> change.consume(); aktuell += delta; laufend = mit(aktuell); laufend?.let(onDrag) },
-        onDragEnd = { laufend?.let(onDrop) },
-        onDragCancel = { mit(Offset(-1f, -1f))?.let(onDrop) },
-    )
 }
 
 @Composable
@@ -771,15 +835,13 @@ private fun UnplatziertLeiste(
         )
         LazyRow(contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(schueler, key = { it.id }) { s ->
-                var anker by remember { mutableStateOf(Offset.Zero) }
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier
                         .clip(RoundedCornerShape(10.dp))
-                        .background(if (s.id == ausgewaehlt) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface)
+                        .background(if (s.id == ausgewaehlt) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.surface)
                         .clickable(role = Role.Button) { onTipp(s) }
-                        .onGloballyPositioned { anker = it.boundsInRoot().topLeft }
-                        .dragQuelle(key = "leiste" + s.id, anker = { anker }, start = { Drag.Schueler(s, it) }, onDrag = onDrag, onDrop = onDrop)
+                        .dragQuelle(key = "leiste" + s.id, start = { Drag.Schueler(s, it) }, onDrag = onDrag, onDrop = onDrop)
                         .padding(6.dp),
                 ) {
                     SchuelerFoto(datei = s.fotoDatei?.let(fotoStore::datei), beschreibung = s.vollerName, modifier = Modifier.size(52.dp).clip(RoundedCornerShape(8.dp)))

@@ -102,18 +102,13 @@ object SitzplanLogik {
 
     /**
      * Legt [schuelerId] an ([x], [y]) ab: auf einem Slot → belegen bzw. mit dem Sitzenden tauschen;
-     * im Freien → neuer Einzeltisch. Sitzt der Schüler schon, wird sein alter Slot frei.
+     * im Freien → keine Änderung (Tische entstehen nur bewusst über „Neuer Tisch“).
      */
     fun ablegen(b: Bestuhlung, sitzplanId: Long, schuelerId: Long, x: Float, y: Float, spalten: Int, reihen: Int, einrasten: Boolean): Bestuhlung {
         val alt = b.plaetze.firstOrNull { it.schuelerId == schuelerId }
         val ziel = zielSlot(b, x, y, spalten, reihen)
         return when {
-            ziel == null -> {
-                val ohne = if (alt != null) b.copy(plaetze = b.plaetze.map { if (it.id == alt.id) it.copy(schuelerId = null) else it }) else b
-                val mitTisch = tischHinzufuegen(ohne, sitzplanId, x, y, 0f, 1, null, spalten, reihen, einrasten)
-                val neuerTisch = mitTisch.tische.last()
-                mitTisch.copy(plaetze = mitTisch.plaetze.map { if (it.tischId == neuerTisch.id) it.copy(schuelerId = schuelerId) else it })
-            }
+            ziel == null -> b
             alt != null && alt.id == ziel.id -> b
             else -> b.copy(
                 plaetze = b.plaetze.map {

@@ -35,14 +35,10 @@ class SitzplanLogikTest {
     }
 
     @Test
-    fun `ablegen im freien raum erzeugt einzeltisch mit schueler`() {
+    fun `ablegen im freien raum aendert nichts`() {
         val b = SitzplanLogik.ablegen(Bestuhlung(), 1, 7, 0.26f, 0.31f, S, R, einrasten = true)
-        assertEquals(1, b.tische.size)
-        assertEquals(1, b.tische[0].plaetze)
-        assertTrue(b.tische[0].id < 0)
-        assertEquals(0.25f, b.tische[0].x, 1e-4f)
-        assertEquals(7L, b.plaetze.single().schuelerId)
-        assertEquals(b.tische[0].id, b.plaetze.single().tischId)
+        assertTrue(b.tische.isEmpty())
+        assertTrue(b.plaetze.isEmpty())
     }
 
     @Test
@@ -56,12 +52,10 @@ class SitzplanLogikTest {
     }
 
     @Test
-    fun `sitzender schueler wandert ins freie und laesst slot leer`() {
+    fun `sitzender schueler bleibt beim ablegen ins freie sitzen`() {
         val start = doppeltisch(1, 0.3f, 0.3f, a = 7)
         val neu = SitzplanLogik.ablegen(start, 1, 7, 0.8f, 0.8f, S, R, false)
-        assertNull(neu.plaetze.first { it.tischId == 1L && it.slot == 0 }.schuelerId)
-        assertEquals(2, neu.tische.size)
-        assertEquals(7L, neu.von(7).schuelerId)
+        assertEquals(start, neu)
     }
 
     @Test
@@ -175,10 +169,10 @@ class TischTrefferTest {
     }
 
     @Test
-    fun `drop neben dem tisch erzeugt neuen tisch`() {
+    fun `drop neben dem tisch aendert nichts`() {
         val b = Bestuhlung(listOf(tisch(1, 0.5f, 0.5f)), listOf(Sitzplatz(10, 1, 1, 0, null)))
         val neu = SitzplanLogik.ablegen(b, 1, 7, 0.5f + 2.5f / S, 0.5f, S, R, einrasten = false)
-        assertEquals(2, neu.tische.size)
+        assertEquals(b, neu)
     }
 
     @Test

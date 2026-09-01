@@ -124,9 +124,11 @@
     <string name="sitzplan_tafel">Board</string>
     <string name="sitzplan_blickrichtung">Switch viewing direction</string>
     <string name="sitzplan_mischen">Shuffle seating</string>
-    <string name="sitzplan_hinweis">Tap a child, then another: swap. Tap a desk (long-press on an occupied seat): select, several possible. Drag moves. Free space: new desk.</string>
+    <string name="sitzplan_hinweis">Tap a child, tap another, then confirm the swap. Tap a desk (long-press on an occupied seat): select, several possible. Drag moves. Free space: new desk.</string>
+    <string name="sitzplan_tauschen">Swap</string>
+    <string name="sitzplan_tausch_paar">%1$s ↔ %2$s</string>
     <string name="sitzplan_hinweis_gewaehlt">Desk selected: rotate, change seats, label or delete.</string>
-    <string name="sitzplan_hinweis_platz">Now tap a seat or a free spot.</string>
+    <string name="sitzplan_hinweis_platz">Now tap a free seat – or another child to swap.</string>
     <string name="sitzplan_drehen_links">Rotate 15° left</string>
     <string name="sitzplan_drehen_rechts">Rotate 15° right</string>
     <string name="sitzplan_platz_weniger">One seat less</string>
